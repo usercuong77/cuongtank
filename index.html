@@ -330,6 +330,25 @@
         #adminCodeInput{pointer-events:auto;width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#090b0a;color:#fff;font-size:16px;outline:none}
         #adminCodeMsg{margin-top:10px;font-size:13px;min-height:18px;color:rgba(255,255,255,.8)}
 
+
+        /* --- Copyright badge --- */
+        #copyrightBadge{
+            position:fixed;
+            top:14px;
+            right:14px;
+            z-index:100000;
+            padding:6px 8px;
+            border-radius:10px;
+            border:1px solid rgba(24,255,106,.22);
+            background:rgba(0,0,0,.18);
+            color:rgba(24,255,106,.70);
+            font-size:11px;
+            letter-spacing:0.6px;
+            user-select:none;
+            pointer-events:none;
+            backdrop-filter: blur(6px);
+        }
+
 </style>
 </head>
 <body>
@@ -3272,6 +3291,9 @@ MAX.UI.init();
             <div id="adminCodeMsg"></div>
         </div>
     </div>
+
+
+    <div id="copyrightBadge">Bản quyền: Cuongdz © 2026</div>
 
 </body>
 </html>
