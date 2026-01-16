@@ -349,6 +349,15 @@
             backdrop-filter: blur(6px);
         }
 
+
+        /* VietKey confirm modal */
+        #vietkeyModal{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:100001;}
+        #vietkeyModal.hidden{display:none;}
+        #vietkeyPanel{width:min(560px,92vw); background:#0b0f0c; border:2px solid rgba(24,255,106,.55); border-radius:14px;
+                      box-shadow:0 0 30px rgba(24,255,106,.22); padding:16px 18px;}
+        .vietkeyTip{margin-top:14px; font-size:12px; color:rgba(255,255,255,.78); text-align:center;}
+        .vietkeyTip b{color:#18ff6a;}
+
 </style>
 </head>
 <body>
@@ -461,6 +470,11 @@
             <div><span class="key">Space</span></div><div>Tuyệt chiêu</div>
             <div><span class="key">1-6</span></div><div>Chọn súng</div>
             <div><span class="key">Q/E/R</span></div><div>Kỹ năng</div>
+        </div>
+
+        
+        <div class="vietkeyTip">
+            Khuyến nghị: <b>tắt VietKey/bộ gõ tiếng Việt</b> (chuyển sang EN) để di chuyển mượt mà.
         </div>
 
         <button class="btn" id="startBtn">TRIỂN KHAI</button>
@@ -3263,7 +3277,9 @@ MAX.UI.init();
 
         Shop.init();
 
-        document.getElementById('startBtn').addEventListener('click', () => {
+        
+        const startGame = () => {
+
             try {
                 const selected = document.querySelector('input[name="tankSystem"]:checked');
                 const sysId = selected ? selected.value : 'default';
@@ -3277,7 +3293,44 @@ MAX.UI.init();
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             Game.init();
+        
+        };
+
+        const openVietkeyConfirm = () => {
+            const m = document.getElementById('vietkeyModal');
+            if (!m) return startGame();
+            m.classList.remove('hidden');
+
+            const yes = document.getElementById('vkYes');
+            const no = document.getElementById('vkNo');
+
+            const close = () => m.classList.add('hidden');
+
+            const onYes = () => { cleanup(); close(); startGame(); };
+            const onNo  = () => { cleanup(); close(); /* stay on start screen */ };
+
+            const onKey = (e) => {
+                if (e.key === 'Enter') { e.preventDefault(); onYes(); }
+                if (e.key === 'Escape') { e.preventDefault(); onNo(); }
+            };
+
+            const cleanup = () => {
+                try {
+                    yes && yes.removeEventListener('click', onYes);
+                    no && no.removeEventListener('click', onNo);
+                    window.removeEventListener('keydown', onKey, true);
+                } catch(e) {}
+            };
+
+            yes && yes.addEventListener('click', onYes);
+            no  && no.addEventListener('click', onNo);
+            window.addEventListener('keydown', onKey, true);
+        };
+
+        document.getElementById('startBtn').addEventListener('click', () => {
+            openVietkeyConfirm();
         });
+
         document.getElementById('restartBtn').addEventListener('click', () => { document.getElementById('gameOverScreen').classList.add('hidden'); document.getElementById('gameUI').classList.remove('hidden'); Game.init(); });
         window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
 
@@ -3294,6 +3347,24 @@ MAX.UI.init();
 
 
     <div id="copyrightBadge">Bản quyền: Cuongdz © 2026</div>
+
+
+    <!-- VietKey confirmation (pre-game) -->
+    <div id="vietkeyModal" class="hidden">
+        <div id="vietkeyPanel">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="font-weight:900; color:#18ff6a; letter-spacing:2px;">LƯU Ý</div>
+                <div style="opacity:0.8; font-size:12px;">(Enter = Rồi, Esc = Chưa)</div>
+            </div>
+            <div style="margin-top:10px; color:#ddd; line-height:1.4;">
+                VietKey/bộ gõ tiếng Việt có thể làm <b>lag phím</b>. Bạn đã tắt VietKey (chuyển EN) chưa?
+            </div>
+            <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn" id="vkNo" style="background:#333;">Chưa</button>
+                <button class="btn" id="vkYes" style="background:#18ff6a; color:#041a0c;">Rồi</button>
+            </div>
+        </div>
+    </div>
 
 </body>
 </html>
