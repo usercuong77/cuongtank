@@ -321,6 +321,15 @@
         #settingsModal input[type="checkbox"] { transform: scale(1.2); }
         #maxTopBar .btn:hover { transform: scale(1.03); box-shadow: 0 0 12px rgba(255,255,255,0.15); }
 
+
+        /* --- Admin code modal (hidden) --- */
+        #adminCodeModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:99999}
+        #adminCodeModal.hidden{display:none}
+        #adminCodePanel{pointer-events:auto;width:min(520px,92vw);background:#0b0f0c;border:2px solid rgba(24,255,106,.9);border-radius:14px;box-shadow:0 0 30px rgba(24,255,106,.25);padding:18px}
+        #adminCodePanel h3{margin:0 0 10px;color:#18ff6a;letter-spacing:2px}
+        #adminCodeInput{pointer-events:auto;width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#090b0a;color:#fff;font-size:16px;outline:none}
+        #adminCodeMsg{margin-top:10px;font-size:13px;min-height:18px;color:rgba(255,255,255,.8)}
+
 </style>
 </head>
 <body>
@@ -2221,13 +2230,111 @@ if (now - this.lastShot > cooldown) {
         }
 
         // --- 4. GAME MANAGERS ---
+        
+        // --- ADMIN CODE INPUT (hidden) ---
+        const Admin = {
+            modal: null, panel: null, input: null, msg: null,
+            prevPaused: false,
+            init() {
+                this.modal = document.getElementById('adminCodeModal');
+                this.panel = document.getElementById('adminCodePanel');
+                this.input = document.getElementById('adminCodeInput');
+                this.msg = document.getElementById('adminCodeMsg');
+                if (!this.modal || !this.input) return;
+
+                // Click outside to close
+                this.modal.addEventListener('mousedown', (e) => {
+                    if (e.target === this.modal) this.close();
+                });
+
+                // Enter to submit
+                this.input.addEventListener('keydown', (e) => {
+                    if (e.key === 'Enter') {
+                        e.preventDefault();
+                        this.run(this.input.value);
+                    } else if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.close();
+                    }
+                });
+            },
+            isOpen() {
+                return this.modal && !this.modal.classList.contains('hidden');
+            },
+            open() {
+                if (!this.modal) return;
+                this.prevPaused = !!Game.paused;
+                Game.paused = true;
+                this.msg.textContent = '';
+                this.input.value = '';
+                this.modal.classList.remove('hidden');
+                setTimeout(() => this.input.focus(), 0);
+            },
+            close() {
+                if (!this.modal) return;
+                this.modal.classList.add('hidden');
+                Game.paused = this.prevPaused;
+            },
+            run(codeRaw) {
+                const code = String(codeRaw || '').trim().toLowerCase();
+                if (!code) { this.msg.textContent = 'Nhập code...'; return; }
+
+                try {
+                    if (code === 'cuongdan') {
+                        // Full ammo upgrade to Lv.5 (replaces old C)
+                        if (Game.player && typeof Game.player.activateCheat === 'function') {
+                            Game.player.activateCheat();
+                            this.msg.textContent = 'OK';
+                        } else {
+                            this.msg.textContent = 'Chưa vào game.';
+                            return;
+                        }
+                        this.close();
+                        return;
+                    }
+
+                    if (code === 'cuongvang') {
+                        // +100.000 gold (replaces old V)
+                        Game.gold = (Game.gold || 0) + 100000;
+                        if (Game.player) createDamageText(Game.player.x, Game.player.y - 45, "+100000G", "#FFD700");
+                        this.msg.textContent = 'OK';
+                        this.close();
+                        return;
+                    }
+
+                    this.msg.textContent = 'Sai code.';
+                } catch (err) {
+                    this.msg.textContent = 'Lỗi.';
+                }
+            },
+            // Capture keys so typing doesn't control the tank
+            captureKey(e) {
+                // Open combo (hidden): Ctrl + Shift + X
+                if (!this.isOpen() && e.ctrlKey && e.shiftKey && (e.code === 'KeyX' || e.key === 'X' || e.key === 'x')) {
+                    e.preventDefault();
+                    this.open();
+                    return true;
+                }
+                // If modal is open: block game controls BUT allow typing into input.
+                if (this.isOpen()) {
+                    // Safety: allow Esc to close even if focus isn't on input
+                    if (e.key === 'Escape') {
+                        e.preventDefault();
+                        this.close();
+                        return true;
+                    }
+                    // Do NOT preventDefault here, otherwise the input cannot receive characters.
+                    return true;
+                }
+                return false;
+            }
+        };
+
         const Input = {
             keys: {}, mouse: { x: 0, y: 0, down: false },
             init() {
-                window.addEventListener('keydown', e => { const k = e.key.toLowerCase(); if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault(); this.keys[k] = true; if(['1','2','3','4','5','6'].includes(e.key)) this.keys[e.key] = true; if (k === 'c') if (Game.player) Game.player.activateCheat();
-                    // ADMIN CHEAT: press V to gain +1000 gold (for testing, not shown in UI)
-                    if (k === 'v') { try { Game.gold = (Game.gold || 0) + 1000; if (Game.ui && Game.ui.updateGold) Game.ui.updateGold(Game.gold); if (typeof Shop !== 'undefined' && Shop.open && Shop.refresh) Shop.refresh(); if (Game.player) createDamageText(Game.player.x, Game.player.y - 45, "+1000G", "#FFD700"); } catch(e){} }
-                if(e.key === ' ') this.keys[' '] = true; });
+                window.addEventListener('keydown', e => { if (typeof Admin !== 'undefined' && Admin.captureKey && Admin.captureKey(e)) return;  const k = e.key.toLowerCase(); if(['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k)) e.preventDefault(); this.keys[k] = true; if(['1','2','3','4','5','6'].includes(e.key)) this.keys[e.key] = true;
+                    if(e.key === ' ') this.keys[' '] = true; });
                 window.addEventListener('keyup', e => { this.keys[e.key.toLowerCase()] = false; if(['1','2','3','4','5','6'].includes(e.key)) this.keys[e.key] = false; if (e.key === ' ') this.keys[' '] = false; });
                 window.addEventListener('mousemove', e => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; });
                 window.addEventListener('mousedown', () => this.mouse.down = true); window.addEventListener('mouseup', () => this.mouse.down = false);
@@ -2757,6 +2864,7 @@ const cost = this.armorCostForLevel(lv);
                 this.player = new Player(this.selectedSystemId); this.enemies = []; this.clones = []; this.turrets = []; this.projectiles = []; this.particles = []; this.pickups = []; this.texts = []; this.obstacles = []; this.score = 0; this.coins = []; this.gold = 0; this.upgrades = { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }; this.active = true;
                 this.generateObstacles(); WaveManager.wave = 1; WaveManager.startWave();
                 this.ui.updateScore(0); this.ui.updateGold(0); this.ui.updateHealth(100, 100); this.ui.updateUltiBar(0); this.ui.updateWeaponInventory(this.player.inventory, this.player.currentWeaponIndex); this.ui.updateTankSystemUI(this.selectedSystemId); this.ui.buffs.innerHTML = '';
+                Admin.init();
                 Input.init(); requestAnimationFrame(loop);
             },
             generateObstacles() {
@@ -3155,5 +3263,15 @@ MAX.UI.init();
         window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
 
     </script>
+
+    <!-- Hidden Admin Code Modal -->
+    <div id="adminCodeModal" class="hidden">
+        <div id="adminCodePanel">
+            <h3>ADMIN</h3>
+            <input id="adminCodeInput" type="password" autocomplete="off" spellcheck="false" placeholder="Nhập code..." />
+            <div id="adminCodeMsg"></div>
+        </div>
+    </div>
+
 </body>
 </html>
