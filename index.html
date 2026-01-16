@@ -1432,13 +1432,30 @@ if (sh) sh.addEventListener("change", () => {
                         this._lastBossUpdate = now;
                     }
                     const ai = this.bossAI;
+
                     const dtBoss = Math.max(0.5, Math.min(2.0, (now - (this._lastBossUpdate || now)) / 16.666));
                     this._lastBossUpdate = now;
 
                     const hpPct = this.maxHp > 0 ? (this.hp / this.maxHp) : 1;
 
+                    // Boss phase: dưới 25% máu sẽ CUỒNG NỘ. Mức cuồng nộ tăng theo màn (wave).
+                    const waveNow = (typeof WaveManager !== 'undefined' && WaveManager.wave) ? (WaveManager.wave | 0) : 1;
+                    const enrageLvl = Math.max(0, Math.min(1, (waveNow - 1) / 15)); // 0..1 (màn càng cao càng điên)
+                    const shouldEnrage = (hpPct <= 0.25);
+                    if (shouldEnrage && !ai.enraged) {
+                        ai.enraged = true;
+                        createComplexExplosion(this.x, this.y, "#FF1744");
+                        createDamageText(this.x, this.y - 80, "CUỒNG NỘ!", "#FF1744");
+                    }
+                    if (!shouldEnrage) ai.enraged = false;
+
+                    const enrageCdMult = ai.enraged ? Math.max(0.55, 0.85 - 0.25 * enrageLvl) : 1;   // giảm hồi chiêu
+                    const enrageShootMult = ai.enraged ? (1.15 + 0.45 * enrageLvl) : 1;                // bắn nhanh hơn
+                    const enrageMoveMult = ai.enraged ? (1.10 + 0.20 * enrageLvl) : 1;                 // chạy nhanh hơn
+
+
                     // Tuning di chuyển boss (để không dính người chơi quá gắt)
-                    moveSpeed = (dist > 320 ? 1.35 : 0.55) * this.speedMult;
+                    moveSpeed = (dist > 320 ? 1.35 : 0.55) * this.speedMult * enrageMoveMult;
 
                     // --- Resolve casting / state ---
                     if (ai.state === 'charge_windup') {
@@ -1447,10 +1464,10 @@ if (sh) sh.addEventListener("change", () => {
                         if (now >= ai.stateEnd) {
                             ai.state = 'charge';
                             ai.stateEnd = now + 900;
-                            const spd = (10.5 + (hpPct < 0.5 ? 1.5 : 0)) * this.speedMult;
+                            const spd = (10.5 + (hpPct < 0.5 ? 1.5 : 0) + (ai.enraged ? (1.8 + 2.2 * enrageLvl) : 0)) * this.speedMult;
                             ai.chargeVx = Math.cos(ai.chargeDir) * spd;
                             ai.chargeVy = Math.sin(ai.chargeDir) * spd;
-                            this.contactDamage = Math.round(18 * this.dmgMult);
+                            this.contactDamage = Math.round(18 * this.dmgMult * (ai.enraged ? (1.15 + 0.35 * enrageLvl) : 1));
                         }
                     } else if (ai.state === 'charge') {
                         // Dash theo thời gian (ổn định 60/120fps)
@@ -1458,15 +1475,15 @@ if (sh) sh.addEventListener("change", () => {
                         this.y += ai.chargeVy * dtBoss;
                         moveSpeed = 0;
                         this.angle = ai.chargeDir;
-                        this.contactDamage = Math.round(18 * this.dmgMult);
+                        this.contactDamage = Math.round(18 * this.dmgMult * (ai.enraged ? (1.15 + 0.35 * enrageLvl) : 1));
                         if (now >= ai.stateEnd) {
                             ai.state = 'idle';
-                            this.contactDamage = Math.round(10 * this.dmgMult);
+                            this.contactDamage = Math.round(10 * this.dmgMult * (ai.enraged ? (1.10 + 0.30 * enrageLvl) : 1));
                         }
                     } else if (ai.state === 'radial_windup') {
                         moveSpeed *= 0.35;
                         if (now >= ai.stateEnd) {
-                            const count = (hpPct < 0.5 ? 26 : 20);
+                            const count = (hpPct < 0.5 ? 26 : 20) + (ai.enraged ? (4 + Math.round(4 * enrageLvl)) : 0);
                             for (let i = 0; i < count; i++) {
                                 const ang = (i / count) * Math.PI * 2;
                                 this.shoot(ang, 'FAST');
@@ -1477,7 +1494,7 @@ if (sh) sh.addEventListener("change", () => {
                     } else if (ai.state === 'summon_cast') {
                         moveSpeed *= 0.25;
                         if (now >= ai.stateEnd) {
-                            const cnt = (hpPct < 0.5 ? 5 : 4);
+                            const cnt = (hpPct < 0.5 ? 5 : 4) + (ai.enraged ? (2 + Math.round(1 * enrageLvl)) : 0);
                             const types = ['RED','RED','RED','BLACK','YELLOW','PURPLE'];
                             const sc = (typeof WaveManager !== 'undefined' && WaveManager.scaling) ? WaveManager.scaling
                                       : ((typeof WaveManager !== 'undefined' && typeof WaveManager.computeScaling === 'function') ? WaveManager.computeScaling() : null);
@@ -1521,17 +1538,18 @@ if (sh) sh.addEventListener("change", () => {
                                 ai.state = 'charge_windup';
                                 ai.chargeDir = desiredAngle;
                                 ai.stateEnd = now + 600;
-                                ai.nextCharge = now + (hpPct < 0.5 ? 6500 : 7800);
+                                ai.nextCharge = now + (hpPct < 0.5 ? 6500 : 7800) * enrageCdMult;
                                 createDamageText(this.x, this.y - 70, "CHUẨN BỊ HÚC!", "#FF1744");
                             } else if (pick === 'radial') {
                                 ai.state = 'radial_windup';
                                 ai.stateEnd = now + 550;
-                                ai.nextRadial = now + (hpPct < 0.5 ? 6000 : 7200);
+                                ai.nextRadial = now + (hpPct < 0.5 ? 6000 : 7200) * enrageCdMult;
                             } else if (pick === 'mines') {
-                                const mineCount = (hpPct < 0.5 ? 10 : 8);
+                                const mineCount = (hpPct < 0.5 ? 10 : 8) + (ai.enraged ? (3 + Math.round(3 * enrageLvl)) : 0);
                                 const mineRadius = 80;
-                                const delay = 1500;
-                                const dmg = Math.round((18 + (hpPct < 0.5 ? 4 : 0)) * this.dmgMult);
+                                const delay = ai.enraged ? Math.max(900, 1300 - Math.round(250 * enrageLvl)) : 1500;
+                                const dmgBase = (18 + (hpPct < 0.5 ? 4 : 0));
+                                const dmg = Math.round(dmgBase * this.dmgMult * (ai.enraged ? (1.2 + 0.3 * enrageLvl) : 1));
 
                                 if (!Game.bossMines) Game.bossMines = [];
                                 for (let i = 0; i < mineCount; i++) {
@@ -1544,11 +1562,11 @@ if (sh) sh.addEventListener("change", () => {
                                     Game.bossMines.push({ x: mx, y: my, radius: mineRadius, spawnAt: now, detonateAt: now + delay, delay: delay, damage: dmg });
                                 }
                                 createDamageText(this.x, this.y - 70, "THẢ MÌN!", "#FF9800");
-                                ai.nextMines = now + (hpPct < 0.5 ? 8000 : 9800);
+                                ai.nextMines = now + (hpPct < 0.5 ? 8000 : 9800) * enrageCdMult;
                             } else if (pick === 'summon') {
                                 ai.state = 'summon_cast';
                                 ai.stateEnd = now + 650;
-                                ai.nextSummon = now + (hpPct < 0.5 ? 11000 : 13500);
+                                ai.nextSummon = now + (hpPct < 0.5 ? 11000 : 13500) * enrageCdMult;
                                 createDamageText(this.x, this.y - 70, "GỌI LÍNH!", "#FF1744");
                             }
                         }
@@ -1556,7 +1574,7 @@ if (sh) sh.addEventListener("change", () => {
 
                     // --- Baseline shooting (disable while charging/windup casts) ---
                     const canShoot = (ai.state === 'idle');
-                    if (canShoot && now - this.lastShot > (this.config.fireRate / this.fireRateMult)) { 
+                    if (canShoot && now - this.lastShot > (this.config.fireRate / (this.fireRateMult * enrageShootMult))) { 
                         this.shoot(desiredAngle, 'FAST');
                         this.lastShot = now;
                     }
@@ -1609,6 +1627,19 @@ if (sh) sh.addEventListener("change", () => {
                 if (this.typeKey === 'BOSS' && this.bossAI) {
                     const now2 = Date.now();
                     const ai = this.bossAI;
+
+                    if (ai.enraged) {
+                        // Aura cuồng nộ (nhìn phát biết ngay)
+                        const pulse = 0.5 + 0.5 * Math.sin(now2 / 80);
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(255,23,68,0.65)';
+                        ctx.lineWidth = 6;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, this.radius + 10 + pulse * 6, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
 
                     if (ai.state === 'charge_windup') {
                         ctx.save();
