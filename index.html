@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Tank Battle 2D - CUONGTANK</title>
+    <title>Tank Battle 2D - Final Fix V4</title>
     <style>
         body {
             margin: 0;
@@ -255,7 +255,7 @@
         }
 
         /* SCREENS */
-        #startScreen, #gameOverScreen {
+        #startScreen, #gameOverScreen, #victoryScreen {
             position: absolute;
             top: 50%;
             left: 50%;
@@ -486,7 +486,24 @@
         <p>Bạn đã dừng bước tại Wave <span id="finalWave" style="color: yellow">0</span></p>
         <p>Tổng điểm: <span id="finalScore" style="color: white; font-weight: bold; font-size: 2rem;">0</span></p>
         <button class="btn" id="restartBtn" style="background: #d32f2f;">CHƠI LẠI</button>
+        <button class="btn" id="menuBtnGO" style="background:#333; margin-top:12px;">VỀ MENU</button>
     </div>
+
+
+    <!-- Victory Screen -->
+    <div id="victoryScreen" class="hidden">
+        <h2 style="color:#4CAF50;">CHIẾN THẮNG</h2>
+        <p>Bạn đã hạ Boss tại Wave <span id="victoryWave" style="color: yellow">0</span></p>
+        <p>Tổng điểm: <span id="victoryScore" style="color: white; font-weight: bold; font-size: 2rem;">0</span></p>
+        <p style="margin-top:8px; color:#aaa; font-size:0.95rem;">
+            Kỷ lục: Score <span id="victoryBestScore" style="color:#4CAF50; font-weight:800;">0</span> —
+            Wave <span id="victoryBestWave" style="color:#4CAF50; font-weight:800;">0</span>
+        </p>
+        <button class="btn" id="victoryRestartBtn" style="background:#18ff6a; color:#041a0c;">CHƠI LẠI</button>
+        <button class="btn" id="victoryEndlessBtn" style="background:#FFD54F; color:#1b1300; margin-top:12px;">CHƠI TIẾP (ENDLESS)</button>
+        <button class="btn" id="victoryMenuBtn" style="background:#333; margin-top:12px;">VỀ MENU</button>
+    </div>
+
 
     
     <!-- MAX UI: Settings + Stats -->
@@ -656,6 +673,7 @@ const canvas = document.getElementById('gameCanvas');
                 master: null,
                 enabled: true,
                 init() {
+                this.paused = false;
                     if (this.ctx) return;
                     try {
                         this.ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -2376,7 +2394,7 @@ if (now - this.lastShot > cooldown) {
         };
 
         const WaveManager = {
-            wave: 1, enemiesRemainingToSpawn: 0, spawnTimer: 0, active: false, isBossWave: false, bossSpawned: false,
+            wave: 1, finalWave: 20, enemiesRemainingToSpawn: 0, spawnTimer: 0, active: false, isBossWave: false, bossSpawned: false,
             scaling: null,
             computeScaling() {
                 const w = this.wave | 0;
@@ -2404,8 +2422,30 @@ if (now - this.lastShot > cooldown) {
             },
             update() {
                 if (!this.active) return;
-                if (this.enemiesRemainingToSpawn > 0) { this.spawnTimer++; if (this.spawnTimer > (this.scaling ? this.scaling.spawnInterval : 60)) { this.spawnEnemy(); this.spawnTimer = 0; this.enemiesRemainingToSpawn--; } } 
-                else if (Game.enemies.length === 0) { this.active = false; this.wave++; createDamageText(Game.player.x, Game.player.y - 50, "WAVE COMPLETE!", "#FFD700"); Shop.show(this.wave, Game.gold, () => { this.startWave(); if (Game.player) Game.player.heal(50); }); }
+                if (this.enemiesRemainingToSpawn > 0) {
+                    this.spawnTimer++;
+                    if (this.spawnTimer > (this.scaling ? this.scaling.spawnInterval : 60)) {
+                        this.spawnEnemy();
+                        this.spawnTimer = 0;
+                        this.enemiesRemainingToSpawn--;
+                    }
+                } else if (Game.enemies.length === 0) {
+                    this.active = false;
+
+                    // Victory: thắng Boss ở finalWave (mặc định 20). Muốn endless thì tăng finalWave.
+                    if (!Game.endlessMode && this.isBossWave && (this.wave >= (this.finalWave || 20))) {
+                        try { if (Game.player) createDamageText(Game.player.x, Game.player.y - 50, "CHIẾN THẮNG!", "#4CAF50"); } catch(e){}
+                        if (Game && typeof Game.victory === 'function') Game.victory();
+                        return;
+                    }
+
+                    this.wave++;
+                    try { if (Game.player) createDamageText(Game.player.x, Game.player.y - 50, "WAVE COMPLETE!", "#FFD700"); } catch(e){}
+                    Shop.show(this.wave, Game.gold, () => {
+                        this.startWave();
+                        if (Game.player) Game.player.heal(50);
+                    });
+                }
             },
             spawnEnemy() {
                 let typeKey; if (this.isBossWave) { typeKey = 'BOSS'; } else { const pool = ['RED']; if (this.wave >= 2) pool.push('YELLOW'); if (this.wave >= 3) pool.push('YELLOW', 'BLACK'); if (this.wave >= 4) pool.push('BLACK', 'BLACK', 'PURPLE'); if (this.wave >= 5) pool.push('PURPLE', 'PURPLE'); typeKey = pool[Math.floor(Math.random() * pool.length)]; }
@@ -2825,6 +2865,7 @@ const cost = this.armorCostForLevel(lv);
         const Game = {
             selectedSystemId: 'default',
             player: null, coins: [], gold: 0, upgrades: { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }, enemies: [], clones: [], turrets: [], projectiles: [], particles: [], pickups: [], bossMines: [], texts: [], obstacles: [], score: 0, shake: 0, active: false,
+            endlessMode: false,
             ui: {
                 scoreVal: document.getElementById('scoreVal'), goldVal: document.getElementById('goldVal'), waveVal: document.getElementById('waveVal'), enemyCount: document.getElementById('enemyCount'), hpText: document.getElementById('hpText'), buffs: document.getElementById('buffsContainer'), healthBar: document.getElementById('healthBar'), weaponBar: document.getElementById('weaponBar'), ultiBar: document.getElementById('ultiBar'),
                 updateScore(val) { this.scoreVal.innerText = val; }, updateGold(val) { if(this.goldVal) this.goldVal.innerText = val; }, updateWave(val) { this.waveVal.innerText = val; }, updateEnemies(val) { this.enemyCount.innerText = val; },
@@ -2895,6 +2936,7 @@ const cost = this.armorCostForLevel(lv);
             init() {
                 WORLD_WIDTH = canvas.width * 3; WORLD_HEIGHT = canvas.height * 3;
                 this.player = new Player(this.selectedSystemId); this.enemies = []; this.clones = []; this.turrets = []; this.projectiles = []; this.particles = []; this.pickups = []; this.texts = []; this.obstacles = []; this.score = 0; this.coins = []; this.gold = 0; this.upgrades = { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }; this.active = true;
+                this.endlessMode = false;
                 this.generateObstacles(); WaveManager.wave = 1; WaveManager.startWave();
                 this.ui.updateScore(0); this.ui.updateGold(0); this.ui.updateHealth(100, 100); this.ui.updateUltiBar(0); this.ui.updateWeaponInventory(this.player.inventory, this.player.currentWeaponIndex); this.ui.updateTankSystemUI(this.selectedSystemId); this.ui.buffs.innerHTML = '';
                 Admin.init();
@@ -2910,8 +2952,46 @@ const cost = this.armorCostForLevel(lv);
                 }
             },
             gameOver() {
-                this.active = false; document.getElementById('gameOverScreen').classList.remove('hidden'); document.getElementById('gameUI').classList.add('hidden'); document.getElementById('finalScore').innerText = this.score; document.getElementById('finalWave').innerText = WaveManager.wave;
+                this.active = false;
+                this.paused = true;
+
+                // Hide shop / boss UI (an toàn)
+                try { const shop = document.getElementById('shopModal'); if (shop) shop.classList.add('hidden'); } catch(e){}
+                try { const bh = document.getElementById('bossHealthContainer'); if (bh) bh.style.display = 'none'; } catch(e){}
+
+                // Update end screen values
+                try { document.getElementById('finalScore').innerText = this.score; } catch(e){}
+                try { document.getElementById('finalWave').innerText = WaveManager.wave; } catch(e){}
+
+                // Update best + sync UI
                 try { if (typeof MAX !== 'undefined') MAX.State.updateBest(this.score, WaveManager.wave); } catch(e){}
+
+                // Show screen
+                try { document.getElementById('gameOverScreen').classList.remove('hidden'); } catch(e){}
+            },
+            victory() {
+                this.active = false;
+                this.paused = true;
+
+                try { const shop = document.getElementById('shopModal'); if (shop) shop.classList.add('hidden'); } catch(e){}
+                try { const bh = document.getElementById('bossHealthContainer'); if (bh) bh.style.display = 'none'; } catch(e){}
+
+                const wave = WaveManager.wave;
+                try { document.getElementById('victoryWave').innerText = wave; } catch(e){}
+                try { document.getElementById('victoryScore').innerText = this.score; } catch(e){}
+
+                // Update best + show best on victory screen
+                try { if (typeof MAX !== 'undefined') MAX.State.updateBest(this.score, wave); } catch(e){}
+                try {
+                    const bs = (typeof MAX !== 'undefined' && MAX.State && MAX.State.save) ? MAX.State.save.bestScore : 0;
+                    const bw = (typeof MAX !== 'undefined' && MAX.State && MAX.State.save) ? MAX.State.save.bestWave : 0;
+                    const elBS = document.getElementById('victoryBestScore');
+                    const elBW = document.getElementById('victoryBestWave');
+                    if (elBS) elBS.innerText = bs;
+                    if (elBW) elBW.innerText = bw;
+                } catch(e){}
+
+                try { document.getElementById('victoryScreen').classList.remove('hidden'); } catch(e){}
             }
         };
 
@@ -3331,8 +3411,43 @@ MAX.UI.init();
             openVietkeyConfirm();
         });
 
-        document.getElementById('restartBtn').addEventListener('click', () => { document.getElementById('gameOverScreen').classList.add('hidden'); document.getElementById('gameUI').classList.remove('hidden'); Game.init(); });
-        window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
+        const hideEndScreens = () => {
+            try { document.getElementById('gameOverScreen').classList.add('hidden'); } catch(e){}
+            try { document.getElementById('victoryScreen').classList.add('hidden'); } catch(e){}
+        };
+
+        const returnToMenu = () => {
+            hideEndScreens();
+            try { const bh = document.getElementById('bossHealthContainer'); if (bh) bh.style.display = 'none'; } catch(e){}
+            try { const shop = document.getElementById('shopModal'); if (shop) shop.classList.add('hidden'); } catch(e){}
+            try { document.getElementById('gameUI').classList.add('hidden'); } catch(e){}
+            try { document.getElementById('startScreen').classList.remove('hidden'); } catch(e){}
+            try { Game.active = false; Game.paused = false; } catch(e){}
+            try { WaveManager.active = false; } catch(e){}
+        };
+
+        const restartRun = () => {
+            hideEndScreens();
+            try { document.getElementById('startScreen').classList.add('hidden'); } catch(e){}
+            try { document.getElementById('gameUI').classList.remove('hidden'); } catch(e){}
+            try { Game.init(); } catch(e){}
+        };
+        
+        const continueEndless = () => {
+            // Close victory screen and keep playing from next wave
+            hideEndScreens();
+            try { Game.paused = false; Game.active = true; Game.endlessMode = true; } catch(e){}
+            try { WaveManager.wave = (WaveManager.wave || 1) + 1; WaveManager.startWave(); } catch(e){}
+        };
+// End screens buttons
+        document.getElementById('restartBtn').addEventListener('click', restartRun);
+        document.getElementById('menuBtnGO').addEventListener('click', returnToMenu);
+        document.getElementById('victoryRestartBtn').addEventListener('click', restartRun);
+        document.getElementById('victoryMenuBtn').addEventListener('click', returnToMenu);
+
+        
+        document.getElementById('victoryEndlessBtn').addEventListener('click', continueEndless);
+window.addEventListener('resize', () => { canvas.width = window.innerWidth; canvas.height = window.innerHeight; });
 
     </script>
 
