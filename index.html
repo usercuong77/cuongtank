@@ -1416,12 +1416,148 @@ if (sh) sh.addEventListener("change", () => {
                 const dx = target.x - this.x; const dy = target.y - this.y; const dist = Math.hypot(dx, dy); let desiredAngle = Math.atan2(dy, dx); let moveSpeed = this.config.speed * this.speedMult;
                 if (this.typeKey === 'BOSS') {
                     const hpBar = document.getElementById('bossHealthBar'); const hpContainer = document.getElementById('bossHealthContainer'); if (hpContainer.style.display !== 'block') hpContainer.style.display = 'block'; hpBar.style.width = `${(this.hp / this.maxHp) * 100}%`;
-                    this.bossTimer++; if (this.bossTimer > 200) { this.bossState = (this.bossState + 1) % 3; this.bossTimer = 0; }
-                    moveSpeed = (dist > 300 ? 1.5 : 0.5) * this.speedMult;
-                    if (now - this.lastShot > (1000 / this.fireRateMult)) { 
-                        if (this.bossState === 0) { for(let i=-2; i<=2; i++) { this.shoot(desiredAngle + i*0.2, 'NORMAL'); } } 
-                        else if (this.bossState === 1) { this.shoot(desiredAngle, 'FAST'); } 
-                        else { this.shoot(now/200, 'HEAVY'); this.shoot(now/200 + Math.PI, 'HEAVY'); }
+                    // --- BOSS SKILLS (Húc / Bắn vòng tròn / Mìn / Gọi lính) ---
+                    if (!this.bossAI) {
+                        this.bossAI = {
+                            state: 'idle',
+                            stateEnd: 0,
+                            chargeDir: 0,
+                            chargeVx: 0,
+                            chargeVy: 0,
+                            nextCharge: now + 2600,
+                            nextRadial: now + 3400,
+                            nextMines: now + 5200,
+                            nextSummon: now + 7800
+                        };
+                        this._lastBossUpdate = now;
+                    }
+                    const ai = this.bossAI;
+                    const dtBoss = Math.max(0.5, Math.min(2.0, (now - (this._lastBossUpdate || now)) / 16.666));
+                    this._lastBossUpdate = now;
+
+                    const hpPct = this.maxHp > 0 ? (this.hp / this.maxHp) : 1;
+
+                    // Tuning di chuyển boss (để không dính người chơi quá gắt)
+                    moveSpeed = (dist > 320 ? 1.35 : 0.55) * this.speedMult;
+
+                    // --- Resolve casting / state ---
+                    if (ai.state === 'charge_windup') {
+                        moveSpeed = 0;
+                        this.angle = ai.chargeDir;
+                        if (now >= ai.stateEnd) {
+                            ai.state = 'charge';
+                            ai.stateEnd = now + 900;
+                            const spd = (10.5 + (hpPct < 0.5 ? 1.5 : 0)) * this.speedMult;
+                            ai.chargeVx = Math.cos(ai.chargeDir) * spd;
+                            ai.chargeVy = Math.sin(ai.chargeDir) * spd;
+                            this.contactDamage = Math.round(18 * this.dmgMult);
+                        }
+                    } else if (ai.state === 'charge') {
+                        // Dash theo thời gian (ổn định 60/120fps)
+                        this.x += ai.chargeVx * dtBoss;
+                        this.y += ai.chargeVy * dtBoss;
+                        moveSpeed = 0;
+                        this.angle = ai.chargeDir;
+                        this.contactDamage = Math.round(18 * this.dmgMult);
+                        if (now >= ai.stateEnd) {
+                            ai.state = 'idle';
+                            this.contactDamage = Math.round(10 * this.dmgMult);
+                        }
+                    } else if (ai.state === 'radial_windup') {
+                        moveSpeed *= 0.35;
+                        if (now >= ai.stateEnd) {
+                            const count = (hpPct < 0.5 ? 26 : 20);
+                            for (let i = 0; i < count; i++) {
+                                const ang = (i / count) * Math.PI * 2;
+                                this.shoot(ang, 'FAST');
+                            }
+                            createDamageText(this.x, this.y - 70, "BẮN VÒNG TRÒN!", "#FF1744");
+                            ai.state = 'idle';
+                        }
+                    } else if (ai.state === 'summon_cast') {
+                        moveSpeed *= 0.25;
+                        if (now >= ai.stateEnd) {
+                            const cnt = (hpPct < 0.5 ? 5 : 4);
+                            const types = ['RED','RED','RED','BLACK','YELLOW','PURPLE'];
+                            const sc = (typeof WaveManager !== 'undefined' && WaveManager.scaling) ? WaveManager.scaling
+                                      : ((typeof WaveManager !== 'undefined' && typeof WaveManager.computeScaling === 'function') ? WaveManager.computeScaling() : null);
+
+                            for (let i = 0; i < cnt; i++) {
+                                const ang = Math.random() * Math.PI * 2;
+                                const r = 120 + Math.random() * 80;
+                                let sx = this.x + Math.cos(ang) * r;
+                                let sy = this.y + Math.sin(ang) * r;
+                                sx = Math.max(80, Math.min(WORLD_WIDTH - 80, sx));
+                                sy = Math.max(80, Math.min(WORLD_HEIGHT - 80, sy));
+                                const tk = types[Math.floor(Math.random() * types.length)];
+
+                                const hpM = sc ? sc.hpMult : 1;
+                                const dmgM = sc ? sc.dmgMult : 1;
+                                const spdM = sc ? sc.speedMult : 1;
+                                const frM  = sc ? sc.fireRateMult : 1;
+
+                                Game.enemies.push(new Enemy(sx, sy, tk, hpM, dmgM, spdM, frM));
+                            }
+                            createComplexExplosion(this.x, this.y, "#FF1744");
+                            createDamageText(this.x, this.y - 70, "GỌI LÍNH!", "#FF1744");
+                            ai.state = 'idle';
+                        }
+                    }
+
+                    // --- Trigger new abilities (idle only) ---
+                    if (ai.state === 'idle') {
+                        this.contactDamage = Math.round(10 * this.dmgMult);
+
+                        const options = [];
+                        if (now >= ai.nextCharge && dist < 520) options.push('charge');
+                        if (now >= ai.nextRadial) options.push('radial');
+                        if (now >= ai.nextMines) options.push('mines');
+                        if (now >= ai.nextSummon) options.push('summon');
+
+                        if (options.length > 0) {
+                            const pick = options[Math.floor(Math.random() * options.length)];
+
+                            if (pick === 'charge') {
+                                ai.state = 'charge_windup';
+                                ai.chargeDir = desiredAngle;
+                                ai.stateEnd = now + 600;
+                                ai.nextCharge = now + (hpPct < 0.5 ? 6500 : 7800);
+                                createDamageText(this.x, this.y - 70, "CHUẨN BỊ HÚC!", "#FF1744");
+                            } else if (pick === 'radial') {
+                                ai.state = 'radial_windup';
+                                ai.stateEnd = now + 550;
+                                ai.nextRadial = now + (hpPct < 0.5 ? 6000 : 7200);
+                            } else if (pick === 'mines') {
+                                const mineCount = (hpPct < 0.5 ? 10 : 8);
+                                const mineRadius = 80;
+                                const delay = 1500;
+                                const dmg = Math.round((18 + (hpPct < 0.5 ? 4 : 0)) * this.dmgMult);
+
+                                if (!Game.bossMines) Game.bossMines = [];
+                                for (let i = 0; i < mineCount; i++) {
+                                    const ang = (i / mineCount) * Math.PI * 2 + Math.random() * 0.25;
+                                    const r = 110 + Math.random() * 90;
+                                    let mx = this.x + Math.cos(ang) * r;
+                                    let my = this.y + Math.sin(ang) * r;
+                                    mx = Math.max(60, Math.min(WORLD_WIDTH - 60, mx));
+                                    my = Math.max(60, Math.min(WORLD_HEIGHT - 60, my));
+                                    Game.bossMines.push({ x: mx, y: my, radius: mineRadius, spawnAt: now, detonateAt: now + delay, delay: delay, damage: dmg });
+                                }
+                                createDamageText(this.x, this.y - 70, "THẢ MÌN!", "#FF9800");
+                                ai.nextMines = now + (hpPct < 0.5 ? 8000 : 9800);
+                            } else if (pick === 'summon') {
+                                ai.state = 'summon_cast';
+                                ai.stateEnd = now + 650;
+                                ai.nextSummon = now + (hpPct < 0.5 ? 11000 : 13500);
+                                createDamageText(this.x, this.y - 70, "GỌI LÍNH!", "#FF1744");
+                            }
+                        }
+                    }
+
+                    // --- Baseline shooting (disable while charging/windup casts) ---
+                    const canShoot = (ai.state === 'idle');
+                    if (canShoot && now - this.lastShot > (this.config.fireRate / this.fireRateMult)) { 
+                        this.shoot(desiredAngle, 'FAST');
                         this.lastShot = now;
                     }
                 } else {
@@ -1469,6 +1605,48 @@ if (sh) sh.addEventListener("change", () => {
                 ctx.fillRect(-this.radius, -this.radius, this.radius*2, this.radius*2);
                 if (this.typeKey === 'BOSS') { ctx.fillStyle = '#B71C1C'; ctx.fillRect(-20, -20, 40, 40); ctx.strokeStyle = '#FFEB3B'; ctx.strokeRect(-this.radius, -this.radius, this.radius*2, this.radius*2); }
                 ctx.fillStyle = 'rgba(0,0,0,0.5)'; ctx.fillRect(0, -5, this.radius + 5, 10); ctx.restore();
+                // Boss telegraphs (dễ né - dễ đọc)
+                if (this.typeKey === 'BOSS' && this.bossAI) {
+                    const now2 = Date.now();
+                    const ai = this.bossAI;
+
+                    if (ai.state === 'charge_windup') {
+                        ctx.save();
+                        ctx.strokeStyle = 'rgba(255,23,68,0.9)';
+                        ctx.lineWidth = 5;
+                        ctx.beginPath();
+                        ctx.moveTo(this.x, this.y);
+                        ctx.lineTo(this.x + Math.cos(ai.chargeDir) * 280, this.y + Math.sin(ai.chargeDir) * 280);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    if (ai.state === 'radial_windup') {
+                        ctx.save();
+                        const t = Math.max(0, Math.min(1, (ai.stateEnd - now2) / 550));
+                        const r = 110 + (1 - t) * 50;
+                        ctx.strokeStyle = 'rgba(255,23,68,0.75)';
+                        ctx.lineWidth = 4;
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.restore();
+                    }
+
+                    if (ai.state === 'summon_cast') {
+                        ctx.save();
+                        const t = Math.max(0, Math.min(1, (ai.stateEnd - now2) / 650));
+                        const r = 90 + (1 - t) * 70;
+                        ctx.strokeStyle = 'rgba(255,235,59,0.75)';
+                        ctx.lineWidth = 3;
+                        ctx.setLineDash([8, 8]);
+                        ctx.beginPath();
+                        ctx.arc(this.x, this.y, r, 0, Math.PI * 2);
+                        ctx.stroke();
+                        ctx.setLineDash([]);
+                        ctx.restore();
+                    }
+                }
                 if (this.typeKey !== 'BOSS') { const hpPercent = this.hp / this.maxHp; ctx.fillStyle = 'red'; ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30, 4); ctx.fillStyle = '#0f0'; ctx.fillRect(this.x - 15, this.y - this.radius - 10, 30 * hpPercent, 4); }
             }
         }
@@ -2475,7 +2653,7 @@ const cost = this.armorCostForLevel(lv);
 
         const Game = {
             selectedSystemId: 'default',
-            player: null, coins: [], gold: 0, upgrades: { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }, enemies: [], clones: [], turrets: [], projectiles: [], particles: [], pickups: [], texts: [], obstacles: [], score: 0, shake: 0, active: false,
+            player: null, coins: [], gold: 0, upgrades: { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }, enemies: [], clones: [], turrets: [], projectiles: [], particles: [], pickups: [], bossMines: [], texts: [], obstacles: [], score: 0, shake: 0, active: false,
             ui: {
                 scoreVal: document.getElementById('scoreVal'), goldVal: document.getElementById('goldVal'), waveVal: document.getElementById('waveVal'), enemyCount: document.getElementById('enemyCount'), hpText: document.getElementById('hpText'), buffs: document.getElementById('buffsContainer'), healthBar: document.getElementById('healthBar'), weaponBar: document.getElementById('weaponBar'), ultiBar: document.getElementById('ultiBar'),
                 updateScore(val) { this.scoreVal.innerText = val; }, updateGold(val) { if(this.goldVal) this.goldVal.innerText = val; }, updateWave(val) { this.waveVal.innerText = val; }, updateEnemies(val) { this.enemyCount.innerText = val; },
@@ -2780,6 +2958,42 @@ const cost = this.armorCostForLevel(lv);
                 });
 
 
+
+                // --- BOSS MINES (mìn nổ chậm) ---
+                if (Game.bossMines && Game.bossMines.length) {
+                    const nowM = Date.now();
+                    for (let i = Game.bossMines.length - 1; i >= 0; i--) {
+                        const m = Game.bossMines[i];
+                        const t = m.detonateAt - nowM;
+                        const pct = Math.max(0, Math.min(1, t / (m.delay || 1500)));
+
+                        // Draw warning
+                        ctx.save();
+                        ctx.fillStyle = 'rgba(255,152,0,0.10)';
+                        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius, 0, Math.PI * 2); ctx.fill();
+                        ctx.strokeStyle = 'rgba(255,152,0,0.95)';
+                        ctx.lineWidth = 2;
+                        ctx.beginPath(); ctx.arc(m.x, m.y, m.radius * (0.35 + 0.65 * pct), 0, Math.PI * 2); ctx.stroke();
+                        ctx.restore();
+
+                        if (nowM >= m.detonateAt) {
+                            createComplexExplosion(m.x, m.y, '#FF9800');
+
+                            if (Game.player && typeof Game.player.takeDamage === 'function') {
+                                const dP = Math.hypot(Game.player.x - m.x, Game.player.y - m.y);
+                                if (dP <= m.radius + Game.player.radius) Game.player.takeDamage(m.damage);
+                            }
+                            if (Game.clones && Game.clones.length) {
+                                Game.clones.forEach(c => {
+                                    const dC = Math.hypot(c.x - m.x, c.y - m.y);
+                                    if (dC <= m.radius + c.radius) c.takeDamage(m.damage);
+                                });
+                            }
+
+                            Game.bossMines.splice(i, 1);
+                        }
+                    }
+                }
 
                 Game.projectiles.forEach(p => { p.update(); p.draw(); });
 
