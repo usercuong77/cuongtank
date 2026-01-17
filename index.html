@@ -293,6 +293,21 @@
             text-transform: uppercase;
         }
         .btn:hover { background: #45a049; transform: scale(1.05); box-shadow: 0 0 20px #4CAF50; }
+
+        /* --- SHOP UI FIX: keep BUY buttons consistent (avoid giant/shifted buttons) --- */
+        #shopModal .btn {
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #shopModal #btnShopContinue {
+            width: auto;
+            padding: 12px 16px;
+            font-size: 1rem;
+            margin-top: 0;
+        }
         .hidden { display: none !important; }
 
         .key-guide {
@@ -462,6 +477,15 @@
                 </div>
             </label>
 
+            <label style="display:flex; gap:10px; align-items:flex-start; margin:6px 0; cursor:pointer;">
+                <input type="radio" name="tankSystem" value="juggernaut" />
+                <div>
+                    <div style="font-weight:700; color:#FFD54F;">Hệ Giáp Sắt</div>
+                    <div style="font-size:0.85rem; color:#aaa;">Giáp phản lực • Cú húc • Pháo đài</div>
+                    <div style="font-size:0.78rem; color:#666; margin-top:2px;">(Giáp phản • Cú húc • Pháo đài)</div>
+                </div>
+            </label>
+
             <div style="font-size:0.8rem; color:#666; margin-top:6px;">(2 hệ mới đã có kỹ năng thật. Q/E/R để dùng.)</div>
         </div>
 <div class="key-guide">
@@ -570,7 +594,7 @@
             </div>
 
             <div style="margin-top:14px; color:#cfcfcf; font-size:0.95rem; line-height:1.35;">
-                Chọn nâng cấp bằng vàng (Bước 2E/2F: Magnet Range +10px và Armor -5% đã mua được).
+                Chọn nâng cấp bằng vàng (Bước 2E/2F: Magnet Range +30px và Armor -5% đã mua được).
             </div>
 
             <div id="shopCards" style="margin-top:16px; display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
@@ -592,9 +616,16 @@
                     <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upFireRateLevel" style="color:#FFD700; font-weight:900;">0</span></div>
                     <button class="btn" id="btnBuyFireRate" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upFireRateCost">50</span><span style="opacity:0.9;">G)</span></button>
                 </div>
+                <div class="shopCard" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Động Cơ</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+5% Tốc Độ</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upSpeedLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuySpeed" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upSpeedCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+
                 <div class="shopCard" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
                     <div style="font-weight:900; color:#fff;">Pickup Range</div>
-                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+10px Magnet</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+30px Magnet</div>
                     <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upMagnetLevel" style="color:#FFD700; font-weight:900;">0</span></div>
                     <button class="btn" id="btnBuyMagnet" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upMagnetCost">50</span><span style="opacity:0.9;">G)</span></button>
                 </div>
@@ -899,6 +930,7 @@ if (sh) sh.addEventListener("change", () => {
 
         const BULLET_TYPES = {
             NORMAL: { id: 'NORMAL', name: 'Thường', color: '#FFF', damage: 20, speed: 12, cooldown: 350, radius: 4 },
+            ROCKET: { id: 'ROCKET', name: 'Rocket', color: '#FF5722', damage: 90, speed: 9, cooldown: 650, radius: 6, special: 'EXPLODE', explosionRadius: 130, splashFactor: 0.75 , homingRange: 500, turnSpeed: 0.2 },
             STUN: { id: 'STUN', name: 'Choáng', color: '#00BCD4', damage: 15, speed: 14, cooldown: 450, radius: 5, effect: { type: 'STUN', duration: 1500 } },
             LIGHTNING: { id: 'LIGHTNING', name: 'Sấm Sét', color: '#FFEB3B', damage: 45, speed: 18, cooldown: 600, radius: 4, special: 'CHAIN', chainRange: 300, chainCount: 3, chainDmgFactor: 0.7 },
             FIRE: { id: 'FIRE', name: 'Đạn Lửa', color: '#FF5722', damage: 20, speed: 13, cooldown: 250, radius: 6, effect: { type: 'BURN', duration: 3000, tickInterval: 500, tickDamage: 8 } },
@@ -974,7 +1006,21 @@ if (sh) sh.addEventListener("change", () => {
                     // R: EMP choáng diện rộng (Boss miễn nhiễm theo Enemy.applyEffect)
                     vampirism: { key: 'R', labelHTML: 'Xung<br>EMP',           color: '#00E5FF', cooldown: 18000, radius: 340, stunDuration: 1200 }
                 }
+            },
+            juggernaut: {
+                id: 'juggernaut',
+                name: 'Hệ Giáp Sắt',
+                skills: {
+                    // J0: chỉ khung UI + cooldown. Logic sẽ triển khai ở J1/J2/J3
+                    // Q: Reflective Shield
+                    clone:     { key: 'Q', labelHTML: 'Giáp<br>Phản', color: '#FFD54F', cooldown: 12000, duration: 5000, castText: 'J0: GIÁP PHẢN LỰC' },
+                    // E: Battering Ram
+                    stealth:   { key: 'E', labelHTML: 'Cú<br>Húc',   color: '#FFCA28', cooldown: 8000,  duration: 400, ramSpeedMult: 3.0, impactBase: 60, impactPerWave: 3, knockback: 95, castText: 'J0: CÚ HÚC' },
+                    // R: Siege Mode
+                    vampirism: { key: 'R', labelHTML: 'Pháo<br>Đài', color: '#FFC107', cooldown: 25000, duration: 6000, castText: 'J0: PHÁO ĐÀI' }
+                }
             }
+
         };
 
         function getTankSystem(id) {
@@ -1201,8 +1247,8 @@ if (sh) sh.addEventListener("change", () => {
                 if(this.trail.length > this.maxTrailLength) this.trail.shift();
 
                 // Homing Logic
-                if (this.config.special === 'HOMING' && this.owner === 'PLAYER') {
-                    let nearest = null; let minDst = this.config.homingRange;
+                if ((this.config.special === 'HOMING' || this.typeKey === 'ROCKET') && this.owner === 'PLAYER') {
+                    let nearest = null; let minDst = (this.config.homingRange != null) ? this.config.homingRange : 500;
                     Game.enemies.forEach(e => {
                         if(isNaN(e.x) || isNaN(e.y)) return;
                         const d = Math.hypot(e.x - this.x, e.y - this.y);
@@ -1213,7 +1259,7 @@ if (sh) sh.addEventListener("change", () => {
                         if(!isNaN(desiredAngle)) {
                             const desiredVx = Math.cos(desiredAngle) * this.config.speed;
                             const desiredVy = Math.sin(desiredAngle) * this.config.speed;
-                            const turnSpeed = this.config.turnSpeed;
+                            const turnSpeed = (this.config.turnSpeed != null) ? this.config.turnSpeed : 0.2;
                             this.velocity.x = this.velocity.x * (1 - turnSpeed) + desiredVx * turnSpeed;
                             this.velocity.y = this.velocity.y * (1 - turnSpeed) + desiredVy * turnSpeed;
                             const currentSpeed = Math.hypot(this.velocity.x, this.velocity.y);
@@ -1225,6 +1271,19 @@ if (sh) sh.addEventListener("change", () => {
                     }
                 }
 
+                // Update angle to match current velocity (for ROCKET drawing)
+
+
+                if (this.typeKey === 'ROCKET') {
+
+
+                    this.angle = Math.atan2(this.velocity.y, this.velocity.x);
+
+
+                }
+
+
+
                 this.x += this.velocity.x;
                 this.y += this.velocity.y;
                 if (this.x < 0 || this.x > WORLD_WIDTH || this.y < 0 || this.y > WORLD_HEIGHT) {
@@ -1235,37 +1294,86 @@ if (sh) sh.addEventListener("change", () => {
 
             draw() {
                 ctx.save();
-                
-                // Draw Trail
-                if(this.trail.length > 1) {
+
+                // --- TRƯỜNG HỢP 1: VẼ ROCKET (Hình tên lửa) ---
+                if (this.typeKey === 'ROCKET') {
+                    ctx.translate(this.x, this.y);
+                    ctx.rotate(this.angle); // Xoay theo hướng bay
+
+                    // 1. Vẽ đuôi lửa (Thruster)
+                    const flicker = Math.random() * 0.5 + 0.5;
+                    ctx.fillStyle = `rgba(255, 87, 34, ${flicker})`; // Màu cam lửa
                     ctx.beginPath();
-                    ctx.moveTo(this.trail[0].x, this.trail[0].y);
-                    for(let i=1; i<this.trail.length; i++) {
-                        ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                    ctx.moveTo(-10, -4);
+                    ctx.lineTo(-25 - Math.random()*10, 0); // Đuôi lửa dài ngẫu nhiên
+                    ctx.lineTo(-10, 4);
+                    ctx.fill();
+
+                    // 2. Vẽ thân (Hình trụ)
+                    ctx.fillStyle = '#424242'; // Màu xám đen quân đội
+                    ctx.fillRect(-10, -6, 20, 12); // Dài 20, Rộng 12
+
+                    // Viền thân cho rõ
+                    ctx.strokeStyle = '#212121';
+                    ctx.lineWidth = 2;
+                    ctx.strokeRect(-10, -6, 20, 12);
+
+                    // 3. Vẽ đầu đạn (Tam giác)
+                    ctx.fillStyle = '#D50000'; // Đầu đỏ nguy hiểm
+                    ctx.beginPath();
+                    ctx.moveTo(10, -6);  // Góc trên thân
+                    ctx.lineTo(24, 0);   // Mũi nhọn
+                    ctx.lineTo(10, 6);   // Góc dưới thân
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // 4. Vẽ cánh đuôi (Fins)
+                    ctx.fillStyle = '#616161';
+                    ctx.beginPath();
+                    ctx.moveTo(-10, -6);
+                    ctx.lineTo(-18, -12); // Cánh trên
+                    ctx.lineTo(-6, -6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    ctx.beginPath();
+                    ctx.moveTo(-10, 6);
+                    ctx.lineTo(-18, 12);  // Cánh dưới
+                    ctx.lineTo(-6, 6);
+                    ctx.fill();
+                    ctx.stroke();
+
+                } 
+                // --- TRƯỜNG HỢP 2: VẼ ĐẠN THƯỜNG (Giữ nguyên code cũ) ---
+                else {
+                    // Draw Trail (Code cũ của bạn)
+                    if(this.trail.length > 1) {
+                        ctx.beginPath();
+                        ctx.moveTo(this.trail[0].x, this.trail[0].y);
+                        for(let i=1; i<this.trail.length; i++) {
+                            ctx.lineTo(this.trail[i].x, this.trail[i].y);
+                        }
+                        ctx.lineCap = 'round';
+                        ctx.lineWidth = this.radius;
+                        ctx.strokeStyle = this.config.color;
+                        ctx.globalAlpha = 0.4;
+                        ctx.stroke();
                     }
-                    ctx.lineCap = 'round';
-                    ctx.lineWidth = this.radius;
+
+                    // Draw Head (Code cũ)
+                    ctx.globalAlpha = 1;
+                    ctx.shadowBlur = 15;
+                    ctx.shadowColor = this.config.color;
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+                    ctx.fillStyle = '#fff';
+                    ctx.fill();
+                    ctx.beginPath();
+                    ctx.arc(this.x, this.y, this.radius + 1, 0, Math.PI * 2);
                     ctx.strokeStyle = this.config.color;
-                    ctx.globalAlpha = 0.4;
+                    ctx.lineWidth = 1;
                     ctx.stroke();
                 }
-
-                // Draw Head with Glow
-                ctx.globalAlpha = 1;
-                ctx.shadowBlur = 15;
-                ctx.shadowColor = this.config.color;
-                
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
-                ctx.fillStyle = '#fff'; // Core is white/bright
-                ctx.fill();
-                
-                // Outer ring
-                ctx.beginPath();
-                ctx.arc(this.x, this.y, this.radius + 1, 0, Math.PI * 2);
-                ctx.strokeStyle = this.config.color;
-                ctx.lineWidth = 1;
-                ctx.stroke();
 
                 ctx.restore();
             }
@@ -1346,7 +1454,13 @@ if (sh) sh.addEventListener("change", () => {
                 if (this.hp <= 0) { this.markedForDeletion = true; createComplexExplosion(this.x, this.y, COLORS.clone); }
             }
             draw() {
-                ctx.save(); ctx.translate(this.x, this.y); ctx.globalAlpha = 0.7; ctx.strokeStyle = COLORS.clone; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, this.radius + 5, 0, Math.PI*2); ctx.stroke();
+                ctx.save(); ctx.translate(this.x, this.y); 
+                // Scale visuals by radius (supports Siege Mode size)
+                const __baseR = (this.baseRadius || 22);
+                const __scale = (__baseR > 0) ? (this.radius / __baseR) : 1;
+                if (!isNaN(__scale) && __scale !== 1) ctx.scale(__scale, __scale);
+
+ctx.globalAlpha = 0.7; ctx.strokeStyle = COLORS.clone; ctx.lineWidth = 2; ctx.beginPath(); ctx.arc(0, 0, this.radius + 5, 0, Math.PI*2); ctx.stroke();
                 ctx.fillStyle = '#222'; ctx.fillRect(-22, -22, 44, 44); ctx.fillStyle = COLORS.clone; ctx.fillRect(-22, -22, 44, 44);
                 ctx.rotate(this.angle); ctx.fillStyle = COLORS.cloneTurret; ctx.beginPath(); ctx.arc(0, 0, 18, 0, Math.PI * 2); ctx.fill(); ctx.fillRect(0, -6, 40, 12); ctx.restore();
             }
@@ -1672,6 +1786,7 @@ if (sh) sh.addEventListener("change", () => {
                 if (this.typeKey === 'BOSS') { color = '#FF1744'; if (mode === 'HEAVY') { dmg = 40; } if (mode === 'FAST') { speed = 12; } } dmg = Math.round(dmg * this.dmgMult);
                 const bulletConfig = { damage: dmg, speed: speed, color: color, radius: 6 };
                 const bullet = new Bullet(this.x, this.y, angle, 'NORMAL', bulletConfig, 'ENEMY');
+                bullet.sourceEnemy = this;
                 if (mode === 'HEAVY') bullet.radius = 10;
                 Game.projectiles.push(bullet);
                 createMuzzleFlash(this.x, this.y, angle, color);
@@ -1747,10 +1862,11 @@ if (sh) sh.addEventListener("change", () => {
                 super(WORLD_WIDTH / 2, WORLD_HEIGHT / 2, 22);
                 this.systemId = systemId || 'default';
                 this.maxHp = 100; this.hp = this.maxHp; this.baseSpeed = 6.5; this.speed = this.baseSpeed; this.angle = 0; this.inventory = [{ id: 'NORMAL', level: 1 }]; this.currentWeaponIndex = 0; this.ultiCharge = 0; 
-                this.buffs = { shield: { active: false, endTime: 0 }, rapid: { active: false, endTime: 0 }, phase: { active: false, endTime: 0 }, adrenaline: { active: false, endTime: 0, speedMult: 1.25, fireMult: 0.85, damageMult: 1.3 } };
+                this.buffs = { shield: { active: false, endTime: 0 }, juggerShield: { active: false, endTime: 0 }, rapid: { active: false, endTime: 0 }, phase: { active: false, endTime: 0 }, adrenaline: { active: false, endTime: 0, speedMult: 1.25, fireMult: 0.85, damageMult: 1.3 } , siege: { active: false, endTime: 0, speedMult: 0.3, fireMult: 0.5, sizeMult: 1.35, armorBase: 0.35, armorMult: 3 }};
                 this.skills = { clone: { lastUsed: 0, active: false }, stealth: { lastUsed: 0, active: false, endTime: 0 }, vampirism: { lastUsed: 0, active: false, endTime: 0 } };
                 this.vampHeal = { windowStart: 0, healed: 0 };
                 this.dash = { active: false, endTime: 0, vx: 0, vy: 0 };
+                this.ram = { active: false, endTime: 0, vx: 0, vy: 0, hitSet: new Set() };
                 this.isStealth = false; this.lastShot = 0;
             }
             activateCheat() { this.inventory = [{ id: 'NORMAL', level: 5 }, { id: 'STUN', level: 5 }, { id: 'LIGHTNING', level: 5 }, { id: 'FIRE', level: 5 }, { id: 'PIERCING', level: 5 }, { id: 'HOMING', level: 5 }]; if (this.currentWeaponIndex >= this.inventory.length) { this.currentWeaponIndex = 0; } this.ultiCharge = 100; createDamageText(this.x, this.y - 60, "CHEAT ACTIVATED!", "#FFD700"); Game.ui.updateWeaponInventory(this.inventory, this.currentWeaponIndex); }
@@ -1988,6 +2104,65 @@ if (sh) sh.addEventListener("change", () => {
                     }
                 }
 
+
+                // Juggernaut system: J2 - Cú Húc (Battering Ram)
+                if (this.systemId === 'juggernaut') {
+                    skillState.lastUsed = now;
+
+                    // Juggernaut system: J1 - Q Giáp Phản (Reflective Shield)
+                    if (skillName === 'clone') {
+                        const dur = (config && config.duration) ? config.duration : 5000;
+                        this.buffs.juggerShield.active = true;
+                        this.buffs.juggerShield.endTime = now + dur;
+                        Game.ui.removeBuff('Giáp Phản');
+                        Game.ui.addBuff('Giáp Phản', (config && config.color) ? config.color : '#FFD54F');
+                        createDamageText(this.x, this.y - 40, 'GIÁP PHẢN!', (config && config.color) ? config.color : '#FFD54F');
+                        Game.shake = Math.max(Game.shake, 6);
+                        return;
+                    }
+
+                    if (skillName === 'stealth') {
+                        // E — Cú Húc: tăng tốc 1s, đâm trúng gây sát thương + đẩy lùi
+                        let dx = Math.cos(this.angle), dy = Math.sin(this.angle);
+                        const len = Math.hypot(dx, dy) || 1;
+                        dx /= len; dy /= len;
+
+                        const dur = config.duration || 1000;
+                        const mult = config.ramSpeedMult || 3.0; // +200% speed => x3
+                        const ramSpeed = (this.baseSpeed || this.speed || 6.5) * mult;
+
+                        if (!this.ram) this.ram = { active: false, endTime: 0, vx: 0, vy: 0, hitSet: new Set() };
+                        this.ram.active = true;
+                        this.ram.endTime = now + dur;
+                        this.ram.vx = dx * ramSpeed;
+                        this.ram.vy = dy * ramSpeed;
+                        this.ram.hitSet = new Set();
+
+                        createDamageText(this.x, this.y - 40, 'CÚ HÚC!', config.color || '#FFCA28');
+                        Game.shake = Math.max(Game.shake, 12);
+                        return;
+                    }
+
+                    
+
+                    // J3 - R: Chế Độ Pháo Đài (Siege Mode) => ép bắn ROCKET, giáp to, bắn nhanh, chậm di chuyển
+                    if (skillName === 'vampirism') {
+                        const dur = (config && config.duration) ? config.duration : 6000;
+                        if (!this.buffs.siege) this.buffs.siege = { active: false, endTime: 0, speedMult: 0.3, fireMult: 0.5, sizeMult: 1.35, armorBase: 0.35, armorMult: 3 };
+                        this.buffs.siege.active = true;
+                        this.buffs.siege.endTime = now + dur;
+
+                        Game.ui.removeBuff('Pháo Đài');
+                        Game.ui.addBuff('Pháo Đài', (config && config.color) ? config.color : '#FFEB3B');
+                        createDamageText(this.x, this.y - 40, 'PHÁO ĐÀI!', (config && config.color) ? config.color : '#FFEB3B');
+                        Game.shake = Math.max(Game.shake, 8);
+                        return;
+                    }
+// Q/R (J0 placeholder) giữ nguyên: hiện text thôi
+                    createDamageText(this.x, this.y - 40, config.castText || 'COMING SOON', config.color || '#FFD700');
+                    return;
+                }
+
                 // Non-default systems: placeholder (fallback)
                 if (this.systemId !== 'default') {
                     skillState.lastUsed = now;
@@ -2062,20 +2237,58 @@ if (sh) sh.addEventListener("change", () => {
                     }
                 }
 
+
+                // Juggernaut expirations
+                if (this.systemId === 'juggernaut') {
+                    if (this.ram && this.ram.active && now > this.ram.endTime) {
+                        this.ram.active = false;
+                    }
+                    if (this.buffs.juggerShield && this.buffs.juggerShield.active && now > this.buffs.juggerShield.endTime) {
+                        this.buffs.juggerShield.active = false;
+                        Game.ui.removeBuff('Giáp Phản');
+                        createDamageText(this.x, this.y - 40, 'HẾT GIÁP PHẢN', '#fff');
+                    }
+                
+                    if (this.buffs.siege && this.buffs.siege.active && now > this.buffs.siege.endTime) {
+                        this.buffs.siege.active = false;
+                        Game.ui.removeBuff('Pháo Đài');
+                        createDamageText(this.x, this.y - 40, 'HẾT PHÁO ĐÀI', '#fff');
+                    }
+}
+
                 // Effective speed (Adrenaline)
                 let effSpeed = (this.baseSpeed || this.speed || 6.5);
+                // Shop upgrade: Động Cơ (Lv 0 = chưa mua, mỗi cấp +5%)
+                const spdLv = (Game.upgrades && typeof Game.upgrades.speedLv === 'number') ? (Game.upgrades.speedLv|0) : 0;
+                if (spdLv > 0) {
+                    effSpeed *= (1 + spdLv * 0.05);
+                }
+
                 if (this.systemId === 'speed' && this.buffs.adrenaline && this.buffs.adrenaline.active) {
                     effSpeed *= (this.buffs.adrenaline.speedMult || 1.25);
                 }
+                if (this.systemId === 'juggernaut' && this.buffs.siege && this.buffs.siege.active) {
+                    effSpeed *= (this.buffs.siege.speedMult || 0.3);
+                }
                 this.speed = effSpeed;
+
+                // Radius / size scaling (Siege Mode)
+                if (this.baseRadius) {
+                    const sm = (this.systemId === 'juggernaut' && this.buffs.siege && this.buffs.siege.active) ? (this.buffs.siege.sizeMult || 1.35) : 1;
+                    this.radius = this.baseRadius * sm;
+                }
 
                 // Movement (Dash overrides)
                 let dx = 0, dy = 0;
                 if (this.dash && this.dash.active && now <= this.dash.endTime) {
                     dx = this.dash.vx;
                     dy = this.dash.vy;
+                } else if (this.ram && this.ram.active && now <= this.ram.endTime) {
+                    dx = this.ram.vx;
+                    dy = this.ram.vy;
                 } else {
                     if (this.dash) this.dash.active = false;
+                    if (this.ram) this.ram.active = false;
                     if (Input.keys.w) dy -= 1; if (Input.keys.s) dy += 1; if (Input.keys.a) dx -= 1; if (Input.keys.d) dx += 1;
                     if (dx !== 0 || dy !== 0) {
                         const length = Math.hypot(dx, dy) || 1;
@@ -2111,6 +2324,40 @@ if (sh) sh.addEventListener("change", () => {
                 this.x = Math.max(this.radius, Math.min(WORLD_WIDTH - this.radius, this.x));
                 this.y = Math.max(this.radius, Math.min(WORLD_HEIGHT - this.radius, this.y));
 
+                // Juggernaut J2: va chạm khi đang Cú Húc (đẩy lùi + gây sát thương)
+                if (this.systemId === 'juggernaut' && this.ram && this.ram.active && now <= this.ram.endTime) {
+                    const ramCfg = getSystemSkillDef(this.systemId, 'stealth') || {};
+                    const waveNow = (typeof WaveManager !== 'undefined' && WaveManager.wave) ? (WaveManager.wave | 0) : 1;
+                    const impactBase = (typeof ramCfg.impactBase === 'number') ? ramCfg.impactBase : 60;
+                    const impactPerWave = (typeof ramCfg.impactPerWave === 'number') ? ramCfg.impactPerWave : 3;
+                    const knock = (typeof ramCfg.knockback === 'number') ? ramCfg.knockback : 95;
+                    const dmg = Math.round(impactBase + impactPerWave * Math.max(0, waveNow - 1));
+
+                    for (const e of Game.enemies) {
+                        if (!e || e.markedForDeletion || e.hp <= 0) continue;
+                        if (e.typeKey === 'BOSS') continue; // an toàn: J2 chưa đẩy Boss
+                        const er = (e.radius || (e.config && e.config.radius) || 18);
+                        const d = Math.hypot(e.x - this.x, e.y - this.y);
+                        if (d > this.radius + er + 2) continue;
+
+                        if (this.ram.hitSet && this.ram.hitSet.has(e)) continue;
+                        if (this.ram.hitSet) this.ram.hitSet.add(e);
+
+                        e.hp -= dmg;
+                        createDamageText(e.x, e.y - 10, '-' + dmg, '#FFCA28');
+
+                        // Knockback
+                        let nx = (e.x - this.x);
+                        let ny = (e.y - this.y);
+                        const l = Math.hypot(nx, ny) || 1;
+                        nx /= l; ny /= l;
+                        e.x += nx * knock;
+                        e.y += ny * knock;
+                        e.x = Math.max(er, Math.min(WORLD_WIDTH - er, e.x));
+                        e.y = Math.max(er, Math.min(WORLD_HEIGHT - er, e.y));
+                    }
+                }
+
                 const worldMouseX = Input.mouse.x + Camera.x;
                 const worldMouseY = Input.mouse.y + Camera.y;
                 this.angle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
@@ -2136,12 +2383,26 @@ if (sh) sh.addEventListener("change", () => {
             shoot(obstacles) {
                 const now = Date.now();
                 // Speed system: cannot shoot while dashing (feels cleaner + less buggy)
-                if (this.systemId === 'speed' && this.dash && this.dash.active && now <= this.dash.endTime) return; const weaponObj = this.getCurrentWeaponObj(); const baseConfig = BULLET_TYPES[weaponObj.id];
+                if (this.systemId === 'speed' && this.dash && this.dash.active && now <= this.dash.endTime) return; let weaponObj = this.getCurrentWeaponObj();
+                let baseConfig = BULLET_TYPES[weaponObj.id];
+
+                // Juggernaut Siege Mode: always shoot ROCKET regardless of current weapon
+                if (this.systemId === 'juggernaut' && this.buffs.siege && this.buffs.siege.active) {
+                    let currentLv = weaponObj.level || 1;
+                    weaponObj = { id: 'ROCKET', level: currentLv };
+                    baseConfig = BULLET_TYPES.ROCKET;
+                }
                 let level = weaponObj.level || 1; let damage = baseConfig.damage; let cooldown = baseConfig.cooldown; let speed = baseConfig.speed;
                 if (weaponObj.id === 'NORMAL') { cooldown = Math.max(100, baseConfig.cooldown - (level - 1) * 30); damage += (level - 1) * 3; }
                 else if (weaponObj.id === 'FIRE') { cooldown = Math.max(80, baseConfig.cooldown - (level - 1) * 30); damage += (level - 1) * 2; }
                 else if (weaponObj.id === 'LIGHTNING') { damage += (level - 1) * 5; } else if (weaponObj.id === 'PIERCING') { damage += (level - 1) * 10; }
                 else if (weaponObj.id === 'HOMING') { damage += (level - 1) * 4; if(level >= 5) damage += 15; } else if (weaponObj.id === 'STUN') { cooldown = Math.max(200, baseConfig.cooldown - (level - 1) * 50); }
+                else if (weaponObj.id === 'ROCKET') {
+                    // Rocket scale: mỗi cấp +15 damage, giảm 20ms cooldown
+                    damage += (level - 1) * 15;
+                    cooldown = Math.max(100, baseConfig.cooldown - (level - 1) * 20);
+                }
+
                 if (this.buffs.rapid.active) cooldown *= ITEM_TYPES.RAPID_FIRE.value;
 
                 // Speed system: Adrenaline reduces cooldown
@@ -2151,7 +2412,12 @@ if (sh) sh.addEventListener("change", () => {
 
                 
 
-                // Speed system: Adrenaline increases damage
+                
+
+                // Juggernaut Siege Mode: double fire rate
+                if (this.systemId === 'juggernaut' && this.buffs.siege && this.buffs.siege.active) {
+                    cooldown *= (this.buffs.siege.fireMult || 0.5);
+                }// Speed system: Adrenaline increases damage
                 if (this.systemId === 'speed' && this.buffs.adrenaline && this.buffs.adrenaline.active) {
                     damage *= (this.buffs.adrenaline.damageMult || 1.3);
                 }
@@ -2172,7 +2438,11 @@ if (now - this.lastShot > cooldown) {
                     else if (weaponObj.id === 'HOMING') { finalConfig.turnSpeed = Math.min(0.5, baseConfig.turnSpeed + (level - 1) * 0.05); }
                     else if (weaponObj.id === 'STUN') { finalConfig.effect = { ...baseConfig.effect, duration: baseConfig.effect.duration + (level - 1) * 200 }; }
 
-                    const tipX = this.x + Math.cos(this.angle) * 35; const tipY = this.y + Math.sin(this.angle) * 35;
+                    const __baseR2 = (this.baseRadius || 22);
+                    const __scale2 = (__baseR2 > 0) ? (this.radius / __baseR2) : 1;
+                    const muzzleDist = 35 * (__scale2 || 1);
+                    const tipX = this.x + Math.cos(this.angle) * muzzleDist;
+                    const tipY = this.y + Math.sin(this.angle) * muzzleDist;
                     const spawnBullet = (ang) => { 
                         Game.projectiles.push(new Bullet(tipX, tipY, ang, weaponObj.id, finalConfig, 'PLAYER'));
                         createMuzzleFlash(tipX, tipY, ang, finalConfig.color);
@@ -2189,13 +2459,18 @@ if (now - this.lastShot > cooldown) {
                     this.lastShot = now;
                 }
             }
-            takeDamage(amount) {
+            takeDamage(amount, source) {
+                const now = Date.now();
+                const rawAmount = amount;
+                const juggerActive = (this.systemId === 'juggernaut' && this.buffs.juggerShield && this.buffs.juggerShield.active && now <= this.buffs.juggerShield.endTime);
+
                 // Speed system: Phase = miễn thương
-                if (this.buffs.phase && this.buffs.phase.active && Date.now() <= this.buffs.phase.endTime) {
+                if (this.buffs.phase && this.buffs.phase.active && now <= this.buffs.phase.endTime) {
                     // Phase (Speed): miễn thương, và chuyển 50% sát thương nhận vào thành máu
                     let a = amount;
                     // tính giảm sát thương như bình thường (Shield + Armor) để giữ cân bằng
                     if (this.buffs.shield.active) a *= 0.3;
+                    if (juggerActive) a *= 0.5;
 
                     const alvP = (Game.upgrades && Game.upgrades.armorLv) ? (Game.upgrades.armorLv | 0) : 0;
                     const reductionP = Math.min(0.60, alvP * 0.05);
@@ -2204,18 +2479,36 @@ if (now - this.lastShot > cooldown) {
                     const healAmt = (finalAmountP > 0) ? (finalAmountP * 0.5) : 0;
                     if (healAmt > 0) {
                         this.heal(healAmt);
-                        createDamageText(this.x, this.y - 60, `+${Math.round(healAmt)}`, "#00ff88");
+                        createDamageText(this.x, this.y - 60, `+${Math.round(healAmt)}`, '#00ff88');
                     }
                     return;
                 }
 
-                if (this.buffs.shield.active) amount *= 0.3;
-                else if (amount > 0) this.loseCurrentWeapon();
+                // Juggernaut J1: Reflective Shield (không phản boss)
+                if (juggerActive && rawAmount > 0) {
+                    const attacker = source ? (source.enemy || source.attacker || null) : null;
+                    if (attacker && attacker.typeKey !== 'BOSS' && typeof attacker.hp === 'number') {
+                        const reflectDmg = Math.max(1, Math.round(rawAmount * 0.5));
+                        attacker.hp -= reflectDmg;
+                        createDamageText(attacker.x, attacker.y - 20, `-${reflectDmg}`, '#FFD54F');
+                    }
+                }
+
+                // Damage reductions
+                let modAmount = amount;
+                if (this.buffs.shield.active) modAmount *= 0.3;
+                if (juggerActive) modAmount *= 0.5;
+
+
+                // Nếu đang bật Pháo Đài (Siege), giảm 60% sát thương nhận vào (chỉ nhận 40%)
+                if (this.buffs.siege && this.buffs.siege.active) modAmount *= 0.4;
+                const hasShield = (this.buffs.shield.active || juggerActive || (this.buffs.siege && this.buffs.siege.active));
+                if (!hasShield && modAmount > 0) this.loseCurrentWeapon();
 
                 // Armor upgrade: -5% damage taken per level (cap 60%)
                 const alv = (Game.upgrades && Game.upgrades.armorLv) ? (Game.upgrades.armorLv | 0) : 0;
                 const reduction = Math.min(0.60, alv * 0.05);
-                const finalAmount = (amount > 0) ? Math.max(1, Math.round(amount * (1 - reduction))) : amount;
+                const finalAmount = (modAmount > 0) ? Math.max(1, Math.round(modAmount * (1 - reduction))) : modAmount;
 
                 this.hp -= finalAmount;
                 if (this.hp < 0) this.hp = 0;
@@ -2287,7 +2580,18 @@ if (now - this.lastShot > cooldown) {
                     ctx.fill();
                 }
 
-                // Body
+                
+                // Juggernaut buff: Giáp Phản
+                if (this.buffs.juggerShield && this.buffs.juggerShield.active && Date.now() <= this.buffs.juggerShield.endTime) {
+                    ctx.beginPath();
+                    ctx.arc(0, 0, this.radius + 14, 0, Math.PI * 2);
+                    ctx.strokeStyle = 'rgba(255, 213, 79, 0.85)';
+                    ctx.lineWidth = 3;
+                    ctx.stroke();
+                    ctx.fillStyle = 'rgba(255, 213, 79, 0.08)';
+                    ctx.fill();
+                }
+// Body
                 ctx.fillStyle = '#333';
                 ctx.fillRect(-22, -22, 44, 44);
                 ctx.fillStyle = '#111';
@@ -2512,6 +2816,10 @@ if (now - this.lastShot > cooldown) {
                 fireRateCost: null,
                 fireRateLevel: null,
 
+                btnBuySpeed: null,
+                speedCost: null,
+                speedLevel: null,
+
                 btnBuyMagnet: null,
                 magnetCost: null,
                 magnetLevel: null,
@@ -2563,6 +2871,10 @@ this.els.btnBuyMaxHp = document.getElementById('btnBuyMaxHp');
                 this.els.fireRateCost = document.getElementById('upFireRateCost');
                 this.els.fireRateLevel = document.getElementById('upFireRateLevel');
 
+                this.els.btnBuySpeed = document.getElementById('btnBuySpeed');
+                this.els.speedCost = document.getElementById('upSpeedCost');
+                this.els.speedLevel = document.getElementById('upSpeedLevel');
+
                 
 
                 this.els.btnBuyMagnet = document.getElementById('btnBuyMagnet');
@@ -2580,6 +2892,9 @@ this.els.btnBuyMaxHp = document.getElementById('btnBuyMaxHp');
                 }
 if (this.els.btnBuyFireRate) {
                     this.els.btnBuyFireRate.addEventListener('click', () => this.buyFireRate());
+                if (this.els.btnBuySpeed) {
+                    this.els.btnBuySpeed.addEventListener('click', () => this.buySpeed());
+                }
                 }
 if (this.els.btnBuyDmg) {
                     this.els.btnBuyDmg.addEventListener('click', () => this.buyDmg());
@@ -2619,6 +2934,14 @@ if (this.els.btnContinue) {
             },
             dmgCostForLevel(lv) { lv = Math.max(0, lv|0); return 50 + (40 * lv) + (5 * lv * (lv - 1)); },
             fireRateCostForLevel(lv) { lv = Math.max(0, lv|0); return 50 + (40 * lv) + (5 * lv * (lv - 1)); },
+            
+            speedCostForLevel(lv) {
+                // Lv 0 = chưa mua. Mua lên Lv 1 (+5%) giá 50, sau đó 90, 140...
+                lv = Math.max(0, lv|0);
+                return 50 + (40 * lv) + (5 * lv * (lv - 1));
+            },
+
+
             magnetCostForLevel(lv) { lv = Math.max(0, lv|0); return 50 + (40 * lv) + (5 * lv * (lv - 1)); },
             armorCostForLevel(lv) { lv = Math.max(0, lv|0); return 50 + (40 * lv) + (5 * lv * (lv - 1)); },
             getPlayerBaseCooldown() {
@@ -2654,6 +2977,10 @@ if (this.els.btnContinue) {
                 if (upKey === 'btnBuyArmor') {
                     const lv = (Game.upgrades && Game.upgrades.armorLv) ? (Game.upgrades.armorLv|0) : 0;
                     return lv >= 12; // 12 * 5% = 60% (đúng cap ở takeDamage)
+                }
+                if (upKey === 'btnBuySpeed') {
+                    const lv = (Game.upgrades && typeof Game.upgrades.speedLv === 'number') ? (Game.upgrades.speedLv|0) : 0;
+                    return lv >= 12;
                 }
                 if (upKey === 'btnBuyFireRate') { return this.isFireRateCapped(); }
                 return false;
@@ -2720,7 +3047,21 @@ if (this.els.btnContinue) {
                     this.els.btnBuyFireRate.style.cursor = can ? "pointer" : "not-allowed";
                 }
 
-                // Pickup Range (+10px magnet range)
+                
+                // Động Cơ (+5% tốc chạy mỗi cấp, Lv 0 = chưa mua)
+                const sLv = (Game.upgrades && typeof Game.upgrades.speedLv === 'number') ? (Game.upgrades.speedLv|0) : 0;
+                const sCapped = sLv >= 12;
+                const sCost = this.speedCostForLevel(sLv);
+                if (this.els.speedLevel) this.els.speedLevel.textContent = sCapped ? "MAX" : String(sLv);
+                if (this.els.speedCost) this.els.speedCost.textContent = sCapped ? "-" : String(sCost);
+                if (this.els.btnBuySpeed) {
+                    const can = (!sCapped) && (Game.gold >= sCost) && Game.player && Game.player.hp > 0;
+                    this.els.btnBuySpeed.disabled = !can || sCapped;
+                    this.els.btnBuySpeed.style.opacity = can ? "1" : "0.55";
+                    this.els.btnBuySpeed.style.cursor = can ? "pointer" : "not-allowed";
+                }
+
+// Pickup Range (+30px magnet range)
                 const mLv = (Game.upgrades && Game.upgrades.magnetLv) ? Game.upgrades.magnetLv : 0;
                 const mCost = this.magnetCostForLevel(mLv);
                 if (this.els.magnetLevel) this.els.magnetLevel.textContent = String(mLv);
@@ -2824,6 +3165,33 @@ const cost = this.fireRateCostForLevel(lv);
 
                 this.refresh();
             },
+            buySpeed() {
+                if (!this.open) return;
+                if (!Game.player) return;
+
+                const lv = (Game.upgrades && typeof Game.upgrades.speedLv === 'number') ? (Game.upgrades.speedLv|0) : 0;
+                if (lv >= 12) {
+                    createDamageText(Game.player.x, Game.player.y - 45, "MAX", "#FFD700");
+                    return;
+                }
+                const cost = this.speedCostForLevel(lv);
+
+                if (Game.gold < cost) {
+                    createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+                    return;
+                }
+
+                Game.gold -= cost;
+                Game.ui.updateGold(Game.gold);
+
+                Game.upgrades.speedLv = lv + 1;
+
+                createDamageText(Game.player.x, Game.player.y - 45, "SPEED +5%", "#FFD700");
+                try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
+                this.refresh();
+            },
+
+
             buyMagnet() {
                 if (!this.open) return;
                 if (!Game.player) return;
@@ -2840,7 +3208,7 @@ const cost = this.fireRateCostForLevel(lv);
 
                 Game.upgrades.magnetLv = lv + 1;
 
-                createDamageText(Game.player.x, Game.player.y - 45, "MAGNET +10px", "#FFD700");
+                createDamageText(Game.player.x, Game.player.y - 45, "MAGNET +30px", "#FFD700");
                 try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
                 this.refresh();
             },
@@ -2867,13 +3235,6 @@ const cost = this.armorCostForLevel(lv);
                 this.refresh();
             },
 
-
-
-
-
-
-
-
             hide() {
                 this.open = false;
                 this.onContinue = null;
@@ -2893,7 +3254,7 @@ const cost = this.armorCostForLevel(lv);
 
         const Game = {
             selectedSystemId: 'default',
-            player: null, coins: [], gold: 0, upgrades: { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }, enemies: [], clones: [], turrets: [], projectiles: [], particles: [], pickups: [], bossMines: [], texts: [], obstacles: [], score: 0, shake: 0, active: false,
+            player: null, coins: [], gold: 0, upgrades: { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, speedLv: 0, magnetLv: 0, armorLv: 0 }, enemies: [], clones: [], turrets: [], projectiles: [], particles: [], pickups: [], bossMines: [], texts: [], obstacles: [], score: 0, shake: 0, active: false,
             endlessMode: false,
             ui: {
                 scoreVal: document.getElementById('scoreVal'), goldVal: document.getElementById('goldVal'), waveVal: document.getElementById('waveVal'), enemyCount: document.getElementById('enemyCount'), hpText: document.getElementById('hpText'), buffs: document.getElementById('buffsContainer'), healthBar: document.getElementById('healthBar'), weaponBar: document.getElementById('weaponBar'), ultiBar: document.getElementById('ultiBar'),
@@ -2964,7 +3325,7 @@ const cost = this.armorCostForLevel(lv);
             },
             init() {
                 WORLD_WIDTH = canvas.width * 3; WORLD_HEIGHT = canvas.height * 3;
-                this.player = new Player(this.selectedSystemId); this.enemies = []; this.clones = []; this.turrets = []; this.projectiles = []; this.particles = []; this.pickups = []; this.texts = []; this.obstacles = []; this.score = 0; this.coins = []; this.gold = 0; this.upgrades = { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, magnetLv: 0, armorLv: 0 }; this.active = true; this.paused = false;
+                this.player = new Player(this.selectedSystemId); this.enemies = []; this.clones = []; this.turrets = []; this.projectiles = []; this.particles = []; this.pickups = []; this.texts = []; this.obstacles = []; this.score = 0; this.coins = []; this.gold = 0; this.upgrades = { maxHpLv: 0, dmgLv: 0, fireRateLv: 0, speedLv: 0, magnetLv: 0, armorLv: 0 }; this.active = true; this.paused = false;
                 this.endlessMode = false;
                 this.generateObstacles(); WaveManager.wave = 1; WaveManager.startWave();
                 this.ui.updateScore(0); this.ui.updateGold(0); this.ui.updateHealth(100, 100); this.ui.updateUltiBar(0); this.ui.updateWeaponInventory(this.player.inventory, this.player.currentWeaponIndex); this.ui.updateTankSystemUI(this.selectedSystemId); this.ui.buffs.innerHTML = '';
@@ -3209,7 +3570,7 @@ const cost = this.armorCostForLevel(lv);
                     const cr = (c.radius || 10);
 
                     // Nam châm hút vàng: trong phạm vi +40px (ngoài va chạm), coin sẽ bay về phía player
-                    const magnetRange = pr + cr + 40 + 10 * ((Game.upgrades && Game.upgrades.magnetLv) ? Game.upgrades.magnetLv : 0);  // bắt đầu hút
+                    const magnetRange = pr + cr + 40 + 30 * ((Game.upgrades && Game.upgrades.magnetLv) ? Game.upgrades.magnetLv : 0);  // bắt đầu hút
                     const pickupRange = pr + cr + 6;   // nhặt thật sự (gần sát)
 
                     if (dist < magnetRange) {
@@ -3281,7 +3642,7 @@ const cost = this.armorCostForLevel(lv);
                 Game.enemies.forEach(e => {
                     e.update(Game.player, Game.clones, Game.obstacles); e.draw();
                     if (Game.player && checkCollision(Game.player, e)) {
-                        if (typeof Game.player.takeDamage === 'function') Game.player.takeDamage(e.contactDamage || 5); 
+                        if (typeof Game.player.takeDamage === 'function') Game.player.takeDamage(e.contactDamage || 5, { enemy: e, type: 'CONTACT' }); 
                         const angle = Math.atan2(e.y - Game.player.y, e.x - Game.player.x); e.x += Math.cos(angle) * 10; e.y += Math.sin(angle) * 10;
                     }
                     Game.clones.forEach(c => {
@@ -3302,7 +3663,7 @@ const cost = this.armorCostForLevel(lv);
 
                     if (b.owner !== 'PLAYER') {
                         if (Game.player && checkCollision(b, Game.player)) { 
-                             if (typeof Game.player.takeDamage === 'function') Game.player.takeDamage(b.config.damage); 
+                             if (typeof Game.player.takeDamage === 'function') Game.player.takeDamage(b.config.damage, { enemy: b.sourceEnemy || null, bullet: b, type: 'BULLET' }); 
                              b.markedForDeletion = true; createComplexExplosion(b.x, b.y, '#E040FB'); 
                         }
                         Game.clones.forEach(c => {
@@ -3337,6 +3698,23 @@ if (b.owner === 'PLAYER' && Game.player && typeof Game.player.gainUltiCharge ===
                                 e.applyEffect(eff);
                             }
 if (b.config.special === 'CHAIN') chainLightning(e, (dmg * b.config.chainDmgFactor), b.config.chainCount, b.config.chainRange);
+                            if (b.config.special === 'EXPLODE') {
+                                const r = b.config.explosionRadius || 120;
+                                const splash = (b.config.splashFactor != null) ? b.config.splashFactor : 0.75;
+                                Game.enemies.forEach(e2 => {
+                                    if (!e2 || e2 === e || e2.hp <= 0 || e2.markedForDeletion) return;
+                                    const d2 = Math.hypot(e2.x - b.x, e2.y - b.y);
+                                    if (d2 <= r) {
+                                        const f = Math.max(0.15, 1 - (d2 / r));
+                                        const sd = Math.round(dmg * splash * f);
+                                        if (sd > 0) {
+                                            e2.hp -= sd;
+                                            createDamageText(e2.x, e2.y, sd, b.config.color);
+                                        }
+                                    }
+                                });
+                                Game.shake = Math.max(Game.shake, 10);
+                            }
                             if (b.config.special === 'PIERCE') { b.pierceCount--; b.hitList.push(e.id); if (b.pierceCount <= 0) b.markedForDeletion = true; } else { b.markedForDeletion = true; }
                         }
                     });
