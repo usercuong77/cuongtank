@@ -80,6 +80,47 @@ function createMuzzleFlash(x, y, angle, color) {
     Game.particles.push(new Particle(x + Math.cos(angle)*10, y + Math.sin(angle)*10, {type: 'spark', color: color, size: 3, life: 0.1, decay: 0.5}));
 }
 function createDamageText(x, y, text, color) { if(isNaN(x)) return; Game.texts.push({ x, y, text, color, life: 1.0, dy: -1 }); }
+
+// --- Damage helpers (standardize skill damage scaling with Shop %DMG) ---
+// IMPORTANT: Bullet damage scaling is handled in Game.js on hit.
+// Use these helpers ONLY for direct skill damage (DOT/impact/EMP/ulti/etc.).
+function getShopDamageMult() {
+  const lv = (Game && Game.upgrades) ? ((Game.upgrades.dmgLv ?? 0) | 0) : 0;
+  return 1 + Math.max(0, lv) * 0.1;
+}
+
+/**
+ * Apply direct skill damage to a target, automatically scaled by Shop %DMG.
+ * Returns the final applied damage amount (number).
+ *
+ * opts:
+ *  - round: boolean (default true)
+ *  - showText: boolean (default true)
+ *  - text: string (override text)
+ *  - textPrefix: string (e.g. '-')
+ *  - textDy: number (y offset)
+ */
+function applySkillDamage(target, baseDamage, color = '#fff', opts = {}) {
+  if (!target || typeof target.hp !== 'number') return 0;
+  const mult = getShopDamageMult();
+  const raw = (typeof baseDamage === 'number') ? baseDamage : 0;
+  const scaled = raw * mult;
+  let amount = (opts.round === false) ? scaled : Math.max(0, Math.round(scaled));
+  if (opts.min1 && amount > 0) amount = Math.max(1, amount);
+  if (amount <= 0) return 0;
+
+  target.hp -= amount;
+
+  const show = (opts.showText !== false);
+  if (show && typeof target.x === 'number' && typeof target.y === 'number') {
+    const dy = (typeof opts.textDy === 'number') ? opts.textDy : 0;
+    const prefix = (opts.textPrefix != null) ? String(opts.textPrefix) : '';
+    const text = (opts.text != null) ? String(opts.text) : (prefix + amount);
+    createDamageText(target.x, target.y + dy, text, color);
+  }
+
+  return amount;
+}
 function chainLightning(startEnemy, baseDamage, count, range) {
     if (count <= 0) return;
     let nearest = null; let minDst = Infinity;
@@ -143,6 +184,8 @@ export {
   createExplosion,
   createMuzzleFlash,
   createDamageText,
+  getShopDamageMult,
+  applySkillDamage,
   chainLightning,
   dropGold,
   dropPickup,

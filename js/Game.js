@@ -488,21 +488,25 @@ export function loop() {
           const dmg = b.config.damage * dmgMult;
           e.hp -= dmg;
           if (b.owner === 'PLAYER' && Game.player && typeof Game.player.gainUltiCharge === 'function') Game.player.gainUltiCharge(0.5);
-          if (Game.player && Game.player.systemId === 'default' && Game.player.skills.vampirism.active && b.owner === 'PLAYER') {
+          // Default-system lifesteal (R: Vampirism)
+          // - Normal player bullets: leechOwner is null => fall back to Game.player
+          // - Clone bullets: CloneTank sets bullet.leechOwner = the owning player
+          const leechOwner = (b && b.leechOwner) ? b.leechOwner : (b.owner === 'PLAYER' ? Game.player : null);
+          if (leechOwner && leechOwner.systemId === 'default' && leechOwner.skills && leechOwner.skills.vampirism && leechOwner.skills.vampirism.active && b.owner === 'PLAYER') {
             // Lifesteal with cap per second
             const now2 = Date.now();
-            if (!Game.player.vampHeal) Game.player.vampHeal = { windowStart: now2, healed: 0 };
-            if (now2 - Game.player.vampHeal.windowStart >= 1000) {
-              Game.player.vampHeal.windowStart = now2;
-              Game.player.vampHeal.healed = 0;
+            if (!leechOwner.vampHeal) leechOwner.vampHeal = { windowStart: now2, healed: 0 };
+            if (now2 - leechOwner.vampHeal.windowStart >= 1000) {
+              leechOwner.vampHeal.windowStart = now2;
+              leechOwner.vampHeal.healed = 0;
             }
             const cap = SKILL_CONFIG.VAMPIRISM.capPerSecond || 0;
             const want = dmg * (SKILL_CONFIG.VAMPIRISM.leechPercent || 0);
-            const remain = cap > 0 ? Math.max(0, cap - Game.player.vampHeal.healed) : want;
+            const remain = cap > 0 ? Math.max(0, cap - leechOwner.vampHeal.healed) : want;
             const healAmount = cap > 0 ? Math.min(want, remain) : want;
             if (healAmount > 0) {
-              Game.player.vampHeal.healed += healAmount;
-              Game.player.heal(healAmount);
+              leechOwner.vampHeal.healed += healAmount;
+              if (typeof leechOwner.heal === 'function') leechOwner.heal(healAmount);
             }
           }
           createDamageText(e.x, e.y, Math.round(dmg), b.config.color);

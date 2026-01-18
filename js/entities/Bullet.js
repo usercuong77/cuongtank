@@ -139,7 +139,46 @@ export class Bullet extends GameObject {
             ctx.fill();
             ctx.stroke();
 
-        } 
+        }
+        // --- TRƯỜNG HỢP 1B: VẼ FIREBALL (Quả cầu lửa) ---
+        // Copy từ bản gốc v36: chỉ vẽ quả cầu lửa (không có vòng tròn phụ), không có trail.
+        else if (this.typeKey === 'FIREBALL') {
+            ctx.translate(this.x, this.y);
+
+            const baseR = (this.radius != null ? this.radius : 36);
+            const r = baseR * 1.15;
+            const c = (this.config && this.config.color) ? this.config.color : '#FF5722';
+
+            // Glow mạnh
+            ctx.shadowBlur = 40;
+            ctx.shadowColor = c;
+
+            // Radial gradient cho lõi + viền
+            const g = ctx.createRadialGradient(0, 0, r * 0.15, 0, 0, r);
+            g.addColorStop(0, 'rgba(255,255,255,0.95)');
+            g.addColorStop(0.25, 'rgba(255,183,77,0.95)');
+            g.addColorStop(0.6, 'rgba(255,87,34,0.85)');
+            g.addColorStop(1, 'rgba(255,87,34,0.10)');
+
+            ctx.beginPath();
+            ctx.arc(0, 0, r, 0, Math.PI * 2);
+            ctx.fillStyle = g;
+            ctx.fill();
+
+            // Viền nóng
+            ctx.shadowBlur = 0;
+            ctx.beginPath();
+            ctx.arc(0, 0, r * 0.95, 0, Math.PI * 2);
+            ctx.strokeStyle = '#FF3D00';
+            ctx.lineWidth = 3;
+            ctx.globalAlpha = 0.9;
+            ctx.stroke();
+
+            ctx.globalAlpha = 1;
+
+            ctx.restore();
+            return;
+        }
         // --- TRƯỜNG HỢP 2: VẼ ĐẠN THƯỜNG (Giữ nguyên code cũ) ---
         else {
             // Optional: Orb bullets (no trail, strong glow)

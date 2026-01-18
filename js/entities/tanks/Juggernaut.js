@@ -15,6 +15,7 @@ import {
   checkCircleRect,
   createDamageText,
   createMuzzleFlash,
+  applySkillDamage,
 } from '../../utils.js';
 import { Bullet } from '../Bullet.js';
 
@@ -234,9 +235,7 @@ export class Juggernaut extends PlayerBase {
       const impactBase = (typeof ramCfg.impactBase === 'number') ? ramCfg.impactBase : 60;
       const impactPerWave = (typeof ramCfg.impactPerWave === 'number') ? ramCfg.impactPerWave : 3;
       const knock = (typeof ramCfg.knockback === 'number') ? ramCfg.knockback : 95;
-      const dmgRaw = Math.round(impactBase + impactPerWave * Math.max(0, waveNow - 1));
-      const dmgMult = (typeof this.getShopDamageMult === 'function') ? this.getShopDamageMult() : 1;
-      const dmg = Math.max(1, Math.round(dmgRaw * dmgMult));
+      const dmg = Math.round(impactBase + impactPerWave * Math.max(0, waveNow - 1));
 
       const list = enemies || Game?.enemies || [];
       for (const e of list) {
@@ -250,8 +249,7 @@ export class Juggernaut extends PlayerBase {
         if (this.ram.hitSet && this.ram.hitSet.has(e)) continue;
         if (this.ram.hitSet) this.ram.hitSet.add(e);
 
-        e.hp -= dmg;
-        createDamageText(e.x, e.y - 10, '-' + dmg, '#FFCA28');
+        applySkillDamage(e, dmg, '#FFCA28', { textPrefix: '-', textDy: -10 });
 
         // Knockback
         let nx = (e.x - this.x);
@@ -445,10 +443,7 @@ export class Juggernaut extends PlayerBase {
     if (juggerActive && rawAmount > 0) {
       const attacker = source ? (source.enemy || source.attacker || null) : null;
       if (attacker && attacker.typeKey !== 'BOSS' && typeof attacker.hp === 'number') {
-        const dmgMult = (typeof this.getShopDamageMult === 'function') ? this.getShopDamageMult() : 1;
-        const reflectDmg = Math.max(1, Math.round(rawAmount * 0.5 * dmgMult));
-        attacker.hp -= reflectDmg;
-        createDamageText(attacker.x, attacker.y - 20, `-${reflectDmg}`, '#FFD54F');
+        applySkillDamage(attacker, rawAmount * 0.5, '#FFD54F', { textPrefix: '-', textDy: -20, min1: true });
       }
     }
 

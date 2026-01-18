@@ -17,6 +17,7 @@ import {
   createDamageText,
   createComplexExplosion,
   createMuzzleFlash,
+  applySkillDamage,
 } from '../utils.js';
 import { Bullet } from './Bullet.js';
 
@@ -72,7 +73,7 @@ export class PlayerBase extends GameObject {
       // Keep these fields to avoid undefined in subclasses (no logic here)
       juggerShield: { active: false, endTime: 0 },
       phase: { active: false, endTime: 0 },
-      adrenaline: { active: false, endTime: 0, speedMult: 1.25, fireMult: 0.85, damageMult: 1.3 },
+      adrenaline: { active: false, endTime: 0, speedMult: 1.25, fireMult: 0.5, damageMult: 1.3 },
       siege: { active: false, endTime: 0, speedMult: 0.3, fireMult: 0.5, sizeMult: 1.35, armorBase: 0.35, armorMult: 3 },
     };
 
@@ -88,14 +89,6 @@ export class PlayerBase extends GameObject {
     this.dash = { active: false, endTime: 0, vx: 0, vy: 0 };
     this.ram = { active: false, endTime: 0, vx: 0, vy: 0, hitSet: new Set() };
     this.isStealth = false;
-  }
-
-  // Shop damage multiplier (+10% per dmgLv).
-  // NOTE: Projectiles are already scaled in Game.js hit logic.
-  // This is for SKILL damage paths that subtract HP directly (DOT/impact/EMP/ulti...).
-  getShopDamageMult() {
-    const lv = ((Game?.upgrades?.dmgLv ?? 0) | 0);
-    return 1 + 0.1 * Math.max(0, lv);
   }
 
   // Cheats (used by Admin)
@@ -238,19 +231,14 @@ export class PlayerBase extends GameObject {
     createComplexExplosion(this.x, this.y, '#FF5722', 50);
 
     if (!Game?.enemies) return;
-
-    const dmgMult = this.getShopDamageMult();
     Game.enemies.forEach(e => {
       if (!e || e.markedForDeletion) return;
       if (e.typeKey === 'BOSS') {
-        const dmg = Math.max(1, Math.round(250 * dmgMult));
-        e.hp -= dmg;
-        createDamageText(e.x, e.y, `-${dmg}`, '#FFD700');
+        applySkillDamage(e, 250, '#FFD700', { textPrefix: '-' });
         createComplexExplosion(e.x, e.y, '#FF5722', 20);
       } else {
-        const dmg = Math.max(1, Math.round(150 * dmgMult));
-        e.hp -= dmg;
-        createDamageText(e.x, e.y, `-${dmg}`, '#FF5722');
+        const base = 150;
+        applySkillDamage(e, base, '#FF5722', { textPrefix: '-' });
         createComplexExplosion(e.x, e.y, '#FF5722', 10);
       }
     });
@@ -431,6 +419,17 @@ export class PlayerBase extends GameObject {
       cooldown = Math.max(80, cooldown); // clamp
     }
 
+
+    // SYSTEM buff: Adrenaline (SpeedTank R) — increases fire rate and bullet damage
+    if (this.buffs?.adrenaline?.active) {
+      // fireMult < 1 => faster firing (lower cooldown)
+      const fm = (this.buffs.adrenaline.fireMult != null) ? this.buffs.adrenaline.fireMult : 0.5;
+      cooldown *= fm;
+
+      // damageMult > 1 => stronger bullets
+      const dm = (this.buffs.adrenaline.damageMult != null) ? this.buffs.adrenaline.damageMult : 1.0;
+      damage *= dm;
+    }
     if (now - this.lastShot > cooldown) {
       let finalConfig = { ...baseConfig, damage: damage, speed: speed };
 
@@ -446,6 +445,10 @@ export class PlayerBase extends GameObject {
           ...baseConfig.effect,
           tickDamage: (baseConfig.effect.tickDamage + (level - 1) * 2),
         };
+        if (this.buffs?.adrenaline?.active) {
+          const dm = (this.buffs.adrenaline.damageMult != null) ? this.buffs.adrenaline.damageMult : 1.0;
+          finalConfig.effect.tickDamage *= dm;
+        }
       } else if (weaponObj.id === 'HOMING') {
         finalConfig.turnSpeed = Math.min(0.5, baseConfig.turnSpeed + (level - 1) * 0.05);
       } else if (weaponObj.id === 'STUN') {

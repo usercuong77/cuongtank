@@ -69,6 +69,19 @@ export class MageTank extends PlayerBase {
       this.blizzard.y = Math.max(0, Math.min(WORLD_HEIGHT, this.blizzard.y));
     }
 
+    // NEW: Blizzard clears enemy projectiles that enter its area
+    // (do not touch player bullets or mines)
+    if (Game.projectiles && Game.projectiles.length) {
+      const r = cfg.radius || 220;
+      for (let i = Game.projectiles.length - 1; i >= 0; i--) {
+        const p = Game.projectiles[i];
+        if (!p || p.markedForDeletion) continue;
+        if (p.owner !== 'ENEMY') continue;
+        const d = Math.hypot(p.x - this.blizzard.x, p.y - this.blizzard.y);
+        if (d <= r) p.markedForDeletion = true;
+      }
+    }
+
     // Damage tick
     if (now >= this.blizzard.nextTick) {
       this.dealBlizzardTickDamage();
@@ -203,9 +216,7 @@ export class MageTank extends PlayerBase {
       if (!e || e.markedForDeletion || e.hp <= 0) continue;
       const d = Math.hypot(e.x - this.blizzard.x, e.y - this.blizzard.y);
       if (d <= r) {
-        const dmgMult = (typeof this.getShopDamageMult === 'function') ? this.getShopDamageMult() : 1;
-        const tickDmgRaw = ((cfg.tickDamage != null) ? cfg.tickDamage : 15) * 2;
-        const tickDmg = Math.max(1, Math.round(tickDmgRaw * dmgMult));
+        const tickDmg = ((cfg.tickDamage != null) ? cfg.tickDamage : 15) * 2;
         e.hp -= tickDmg;
         createDamageText(e.x, e.y, String(tickDmg), '#00E5FF');
 

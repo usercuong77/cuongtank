@@ -9,8 +9,9 @@ import { Bullet } from '../Bullet.js';
 
 // CloneTank was previously defined inside Player.js. It remains a simple entity.
 export class CloneTank extends GameObject {
-    constructor(x, y) {
+    constructor(x, y, ownerPlayer = null) {
         super(x, y, 22);
+        this.ownerPlayer = ownerPlayer;
         this.hp = SKILL_CONFIG.CLONE.hp; this.maxHp = SKILL_CONFIG.CLONE.hp;
         this.spawnTime = Date.now(); this.duration = SKILL_CONFIG.CLONE.duration;
         this.speed = 4; this.angle = 0; this.lastShot = 0; this.moveAngle = Math.random() * Math.PI * 2;
@@ -67,7 +68,10 @@ export class CloneTank extends GameObject {
         if(isNaN(angle)) return;
         const { Game } = getPlayerContext();
         const bullet = new Bullet(this.x, this.y, angle, 'NORMAL', BULLET_TYPES.NORMAL, 'PLAYER');
-        bullet.config = { ...BULLET_TYPES.NORMAL, color: '#81D4FA' }; 
+        bullet.config = { ...BULLET_TYPES.NORMAL, color: '#81D4FA' };
+        // Allow clone bullets to leech-heal their owner when Default R (Vampirism) is active
+        bullet.leechOwner = this.ownerPlayer;
+ 
         Game.projectiles.push(bullet);
         createMuzzleFlash(this.x, this.y, this.angle, '#81D4FA');
     }
@@ -123,7 +127,7 @@ export class DefaultTank extends PlayerBase {
                 createDamageText(this.x, this.y - 60, 'THAY THẾ!', '#ccc');
             }
             createDamageText(this.x, this.y - 40, 'PHÂN THÂN CHIẾN ĐẤU!', COLORS.clone);
-            Game.clones.push(new CloneTank(this.x + 50, this.y));
+            Game.clones.push(new CloneTank(this.x + 50, this.y, this));
         }
         else if (skillName === 'stealth') {
             createDamageText(this.x, this.y - 40, 'TÀNG HÌNH!', '#AB47BC');

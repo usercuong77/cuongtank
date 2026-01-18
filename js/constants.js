@@ -117,7 +117,7 @@ export const TANK_SYSTEMS = {
             // E: Phase (miễn thương ngắn)
             stealth:   { key: 'E', labelHTML: 'Miễn<br>Thương',         color: '#81D4FA', cooldown: 10000, duration: 1000 },
             // R: Adrenaline (buff)
-            vampirism: { key: 'R', labelHTML: 'Cuồng<br>Tốc',         color: '#29B6F6', cooldown: 14000, duration: 4000, speedMult: 1.25, fireMult: 0.85, damageMult: 1.3 }
+            vampirism: { key: 'R', labelHTML: 'Cuồng<br>Tốc',         color: '#29B6F6', cooldown: 14000, duration: 4000, speedMult: 1.25, fireMult: 0.5, damageMult: 1.3 }
         }
     },
     engineer: {

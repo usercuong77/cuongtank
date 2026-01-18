@@ -85,8 +85,9 @@ export class EngineerTank extends PlayerBase {
 
     // R - EMP (AOE stun + clears enemy bullets + freezes boss briefly)
     if (skillName === 'vampirism') {
-      const radius = config.radius || 340;
-      const dur = config.stunDuration || 1200;
+      // Tuning: EMP radius x3; stun/freeze duration x2
+      const radius = (config.radius || 340) * 3;
+      const dur = (config.stunDuration || 1200) * 2;
       const now2 = Date.now();
       let hit = 0;
       let bulletsCleared = 0;
@@ -115,12 +116,11 @@ export class EngineerTank extends PlayerBase {
           // Bypass STUN immunity: use existing stun slot as a short freeze
           if (e.effects && e.effects.stun) {
             e.effects.stun.active = true;
-            e.effects.stun.endTime = now2 + Math.min(dur, 900);
+            // Double the previous freeze cap as well (was 900ms)
+            e.effects.stun.endTime = now2 + Math.min(dur, 1800);
           }
           const base = (typeof e.maxHp === 'number' && e.maxHp > 0) ? e.maxHp : e.hp;
-          const dmgMult = (typeof this.getShopDamageMult === 'function') ? this.getShopDamageMult() : 1;
-          const bossDmgRaw = Math.max(30, Math.round(base * 0.015));
-          const bossDmg = Math.max(1, Math.round(bossDmgRaw * dmgMult));
+          const bossDmg = Math.max(30, Math.round(base * 0.015));
           e.hp -= bossDmg;
           createDamageText(e.x, e.y - 10, '-' + bossDmg, '#B3E5FC');
           createDamageText(e.x, e.y - 32, '\u0110\u00D3NG B\u0102NG!', '#00E5FF');
