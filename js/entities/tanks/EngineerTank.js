@@ -118,7 +118,9 @@ export class EngineerTank extends PlayerBase {
             e.effects.stun.endTime = now2 + Math.min(dur, 900);
           }
           const base = (typeof e.maxHp === 'number' && e.maxHp > 0) ? e.maxHp : e.hp;
-          const bossDmg = Math.max(30, Math.round(base * 0.015));
+          const dmgMult = (typeof this.getShopDamageMult === 'function') ? this.getShopDamageMult() : 1;
+          const bossDmgRaw = Math.max(30, Math.round(base * 0.015));
+          const bossDmg = Math.max(1, Math.round(bossDmgRaw * dmgMult));
           e.hp -= bossDmg;
           createDamageText(e.x, e.y - 10, '-' + bossDmg, '#B3E5FC');
           createDamageText(e.x, e.y - 32, '\u0110\u00D3NG B\u0102NG!', '#00E5FF');

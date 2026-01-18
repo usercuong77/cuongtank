@@ -90,6 +90,14 @@ export class PlayerBase extends GameObject {
     this.isStealth = false;
   }
 
+  // Shop damage multiplier (+10% per dmgLv).
+  // NOTE: Projectiles are already scaled in Game.js hit logic.
+  // This is for SKILL damage paths that subtract HP directly (DOT/impact/EMP/ulti...).
+  getShopDamageMult() {
+    const lv = ((Game?.upgrades?.dmgLv ?? 0) | 0);
+    return 1 + 0.1 * Math.max(0, lv);
+  }
+
   // Cheats (used by Admin)
   activateCheat() {
     this.inventory = [
@@ -230,14 +238,17 @@ export class PlayerBase extends GameObject {
     createComplexExplosion(this.x, this.y, '#FF5722', 50);
 
     if (!Game?.enemies) return;
+
+    const dmgMult = this.getShopDamageMult();
     Game.enemies.forEach(e => {
       if (!e || e.markedForDeletion) return;
       if (e.typeKey === 'BOSS') {
-        e.hp -= 250;
-        createDamageText(e.x, e.y, '-250', '#FFD700');
+        const dmg = Math.max(1, Math.round(250 * dmgMult));
+        e.hp -= dmg;
+        createDamageText(e.x, e.y, `-${dmg}`, '#FFD700');
         createComplexExplosion(e.x, e.y, '#FF5722', 20);
       } else {
-        const dmg = 150;
+        const dmg = Math.max(1, Math.round(150 * dmgMult));
         e.hp -= dmg;
         createDamageText(e.x, e.y, `-${dmg}`, '#FF5722');
         createComplexExplosion(e.x, e.y, '#FF5722', 10);

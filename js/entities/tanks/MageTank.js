@@ -203,7 +203,9 @@ export class MageTank extends PlayerBase {
       if (!e || e.markedForDeletion || e.hp <= 0) continue;
       const d = Math.hypot(e.x - this.blizzard.x, e.y - this.blizzard.y);
       if (d <= r) {
-        const tickDmg = ((cfg.tickDamage != null) ? cfg.tickDamage : 15) * 2;
+        const dmgMult = (typeof this.getShopDamageMult === 'function') ? this.getShopDamageMult() : 1;
+        const tickDmgRaw = ((cfg.tickDamage != null) ? cfg.tickDamage : 15) * 2;
+        const tickDmg = Math.max(1, Math.round(tickDmgRaw * dmgMult));
         e.hp -= tickDmg;
         createDamageText(e.x, e.y, String(tickDmg), '#00E5FF');
 

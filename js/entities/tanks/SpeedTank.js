@@ -140,6 +140,7 @@ export class SpeedTank extends PlayerBase {
     }
 
     // Movement (Dash overrides)
+    // IMPORTANT: normalize diagonal movement so speed is consistent (no sqrt(2) boost).
     let dx = 0;
     let dy = 0;
 
@@ -147,10 +148,20 @@ export class SpeedTank extends PlayerBase {
       dx = this.dash.vx;
       dy = this.dash.vy;
     } else {
-      if (Input.keys.w) dy -= effSpeed;
-      if (Input.keys.s) dy += effSpeed;
-      if (Input.keys.a) dx -= effSpeed;
-      if (Input.keys.d) dx += effSpeed;
+      let ix = 0;
+      let iy = 0;
+      if (Input.keys.w) iy -= 1;
+      if (Input.keys.s) iy += 1;
+      if (Input.keys.a) ix -= 1;
+      if (Input.keys.d) ix += 1;
+
+      if (ix !== 0 || iy !== 0) {
+        const len = Math.hypot(ix, iy) || 1;
+        ix /= len;
+        iy /= len;
+        dx = ix * effSpeed;
+        dy = iy * effSpeed;
+      }
     }
 
     const nextX = this.x + dx;
