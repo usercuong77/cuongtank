@@ -5,7 +5,7 @@
 
 import { PlayerBase, getPlayerContext } from '../Player.js';
 import { SKILL_CONFIG, WORLD_WIDTH, WORLD_HEIGHT } from '../../constants.js';
-import { checkCircleRect, createMuzzleFlash, createComplexExplosion, createDamageText } from '../../utils.js';
+import { checkCircleRect, createMuzzleFlash, createComplexExplosion, createDamageText, applySkillDamage } from '../../utils.js';
 import { Bullet } from '../Bullet.js';
 
 export class MageTank extends PlayerBase {
@@ -217,8 +217,8 @@ export class MageTank extends PlayerBase {
       const d = Math.hypot(e.x - this.blizzard.x, e.y - this.blizzard.y);
       if (d <= r) {
         const tickDmg = ((cfg.tickDamage != null) ? cfg.tickDamage : 15) * 2;
-        e.hp -= tickDmg;
-        createDamageText(e.x, e.y, String(tickDmg), '#00E5FF');
+        const dealt = applySkillDamage(e, tickDmg, '#00E5FF', { showText: false });
+        createDamageText(e.x, e.y, String(dealt), '#00E5FF');
 
         if (typeof e.applyEffect === 'function') {
           e.applyEffect({ type: 'SLOW', duration: cfg.slowDuration || 650, mult: cfg.slowMult || 0.5 });

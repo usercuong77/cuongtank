@@ -3,7 +3,7 @@
 
 import { PlayerBase, getPlayerContext } from '../Player.js';
 import { getSystemSkillDef } from '../../constants.js';
-import { checkCircleRect, createDamageText, createComplexExplosion } from '../../utils.js';
+import { checkCircleRect, createDamageText, createComplexExplosion, applySkillDamage } from '../../utils.js';
 import { Turret } from '../Turret.js';
 import { Particle } from '../Particle.js';
 
@@ -121,8 +121,8 @@ export class EngineerTank extends PlayerBase {
           }
           const base = (typeof e.maxHp === 'number' && e.maxHp > 0) ? e.maxHp : e.hp;
           const bossDmg = Math.max(30, Math.round(base * 0.015));
-          e.hp -= bossDmg;
-          createDamageText(e.x, e.y - 10, '-' + bossDmg, '#B3E5FC');
+          const dealt = applySkillDamage(e, bossDmg, '#B3E5FC', { showText: false });
+          createDamageText(e.x, e.y - 10, '-' + dealt, '#B3E5FC');
           createDamageText(e.x, e.y - 32, '\u0110\u00D3NG B\u0102NG!', '#00E5FF');
           createComplexExplosion(e.x, e.y, '#00E5FF', 10);
           bossFrozen++;
