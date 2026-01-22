@@ -3,179 +3,404 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Đang Bảo Trì & Cập Nhật Đồ Họa</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700&family=Roboto:wght@300;400&display=swap" rel="stylesheet">
-    <style>
-        body {
-            margin: 0;
-            padding: 0;
-            background-color: #050505;
-            color: white;
-            font-family: 'Roboto', sans-serif;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-        }
-
-        #particles-js {
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            z-index: 1;
-        }
-
-        .content-wrapper {
-            position: relative;
-            z-index: 10;
-            text-align: center;
-            padding: 2rem;
-            background: rgba(0, 0, 0, 0.6);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.1);
-            border-radius: 20px;
-            box-shadow: 0 0 50px rgba(0, 200, 255, 0.2);
-            max-width: 600px;
-            width: 90%;
-            animation: fadeIn 1.5s ease-out;
-        }
-
-        h1 {
-            font-family: 'Orbitron', sans-serif;
-            font-size: 2.5rem;
-            margin-bottom: 1rem;
-            background: linear-gradient(90deg, #00d2ff, #3a7bd5, #00d2ff);
-            background-size: 200% auto;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            animation: shine 3s linear infinite, slideUp 1s ease-out;
-        }
-
-        .status-badge {
-            display: inline-block;
-            padding: 0.5rem 1.5rem;
-            background: #e63946;
-            color: white;
-            font-weight: bold;
-            border-radius: 50px;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            letter-spacing: 2px;
-            margin-bottom: 2rem;
-            animation: pulse 2s infinite;
-        }
-
-        p {
-            font-size: 1.1rem;
-            line-height: 1.6;
-            color: #ccc;
-            margin-bottom: 1.5rem;
-            opacity: 0;
-            animation: fadeIn 1s ease-out 0.5s forwards;
-        }
-
-        .contact-info {
-            margin-top: 2rem;
-            padding-top: 1.5rem;
-            border-top: 1px solid rgba(255, 255, 255, 0.1);
-            animation: fadeIn 1s ease-out 1s forwards;
-            opacity: 0;
-        }
-
-        .contact-link {
-            color: #00d2ff;
-            font-weight: bold;
-            text-decoration: none;
-            text-shadow: 0 0 10px rgba(0, 210, 255, 0.5);
-            transition: all 0.3s ease;
-            position: relative;
-            display: inline-block;
-        }
-
-        .contact-link:hover {
-            color: #ffffff;
-            text-shadow: 0 0 20px rgba(0, 210, 255, 1);
-            transform: scale(1.1);
-        }
-
-        @keyframes shine {
-            to { background-position: 200% center; }
-        }
-
-        @keyframes slideUp {
-            from { transform: translateY(30px); opacity: 0; }
-            to { transform: translateY(0); opacity: 1; }
-        }
-
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 57, 70, 0.7); }
-            70% { transform: scale(1.05); box-shadow: 0 0 0 10px rgba(230, 57, 70, 0); }
-            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(230, 57, 70, 0); }
-        }
-
-        .loader {
-            width: 48px;
-            height: 48px;
-            border: 5px solid #FFF;
-            border-bottom-color: #00d2ff;
-            border-radius: 50%;
-            display: inline-block;
-            box-sizing: border-box;
-            animation: rotation 1s linear infinite;
-            margin-bottom: 1rem;
-        }
-
-        @keyframes rotation {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
-    </style>
+    <title>Tank Battle 2D - Final Fix V4</title>
+    <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
-    <div id="particles-js"></div>
+    <canvas id="gameCanvas"></canvas>
 
-    <div class="content-wrapper">
-        <div class="loader"></div>
-        <div class="status-badge">Maintenance</div>
-        <h1>ĐANG BẢO TRÌ</h1>
-        <p>
-            Chúng tôi đang tiến hành nâng cấp toàn diện hệ thống và cập nhật đồ họa để mang lại trải nghiệm tuyệt vời nhất cho bạn.
-        </p>
-        <p>Vui lòng quay lại sau khi quá trình hoàn tất.</p>
+    <!-- UI Layer -->
+    <div id="gameUI" class="ui-layer hidden">
+        <div id="hud-top-left">
+            <div class="hud-text wave-text">WAVE <span id="waveVal">1</span></div>
+            
+            <div id="fpsCounter" class="hud-text hidden" style="font-size: 0.95rem; color: #FFD700;">FPS: <span id="fpsVal">0</span></div>
+<div class="hud-text">Điểm: <span id="scoreVal" class="highlight">0</span></div>
+            <div class="hud-text">Vàng: <span id="goldVal" class="highlight" style="color:#FFD700;">0</span></div>
+            <div class="hud-text" style="font-size: 0.9rem; color: #aaa;">Kẻ địch: <span id="enemyCount">0</span></div>
+        </div>
+
+        <div id="hud-top-right">
+            <div id="buffsContainer"></div>
+        </div>
+
+        <!-- BOSS HP BAR -->
+        <div id="bossHealthContainer">
+            <div id="bossHealthBar"></div>
+            <div id="bossName">MECHA BOSS</div>
+        </div>
+
+        <!-- HUD Bottom (2P layout) -->
+        <div id="hudRoot">
+            <div id="hudP1" class="hudPanel">
+                <div id="ultiContainer">
+                    <div id="ultiText">BÃO LỬA (Space)</div>
+                    <div id="ultiBar"></div>
+                </div>
+
+                <div id="healthBarContainer">
+                    <div id="shieldOverlay"></div>
+                    <div id="healthBar"></div>
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; text-align: center; line-height: 20px; font-size: 0.7rem; font-weight: bold; text-shadow: 1px 1px 0 #000;">
+                        <span id="hpText">100/100</span>
+                    </div>
+                </div>
+
+                <div id="skillBar">
+                    <div class="slot" id="skill-clone" style="border-color: #29B6F6; color: #29B6F6;">
+                        <div class="key-number">Q</div>
+                        <div class="icon">Phân<br>Thân</div>
+                        <div class="cooldown-overlay" id="cd-clone"></div>
+                        <div class="cooldown-text" id="cdt-clone"></div>
+                    </div>
+                    <div class="slot" id="skill-stealth" style="border-color: #AB47BC; color: #AB47BC;">
+                        <div class="key-number">E</div>
+                        <div class="icon">Tàng<br>Hình</div>
+                        <div class="cooldown-overlay" id="cd-stealth"></div>
+                        <div class="cooldown-text" id="cdt-stealth"></div>
+                    </div>
+                    <div class="slot" id="skill-vampirism" style="border-color: #FF5252; color: #FF5252;">
+                        <div class="key-number">R</div>
+                        <div class="icon">Hút<br>Máu</div>
+                        <div class="cooldown-overlay" id="cd-vampirism"></div>
+                        <div class="cooldown-text" id="cdt-vampirism"></div>
+                    </div>
+                </div>
+
+                <div id="weaponBar"></div>
+            </div>
+
+            <div id="hudDivider"></div>
+
+            <div id="hudP2" class="hudPanel">
+                <!-- 2P: health bar for Player2 (hidden in 1P) -->
+                <div id="healthBarContainerP2" style="position: relative; width: 320px; height: 18px; background: #222; border: 2px solid #555; border-radius: 4px; overflow: hidden; display: none;">
+                    <div id="shieldOverlayP2" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0, 191, 255, 0.5); display: none;"></div>
+                    <div id="healthBarP2" style="width: 100%; height: 100%; background: linear-gradient(90deg, #4CAF50, #8BC34A); transition: width 0.2s;"></div>
+                    <div style="position: absolute; top: 0; left: 0; width: 100%; text-align: center; line-height: 18px; font-size: 0.7rem; font-weight: bold; text-shadow: 1px 1px 0 #000;">
+                        <span id="hpTextP2">100/100</span>
+                    </div>
+                </div>
+
+                <!-- 2P: skill bar for Player2 (hidden in 1P) -->
+                <div id="skillBarP2">
+                    <div class="slot" id="p2-skill-clone" style="border-color: #29B6F6; color: #29B6F6;">
+                        <div class="key-number">1</div>
+                        <div class="icon">Phân<br>Thân</div>
+                        <div class="cooldown-overlay" id="p2-cd-clone"></div>
+                        <div class="cooldown-text" id="p2-cdt-clone"></div>
+                    </div>
+                    <div class="slot" id="p2-skill-stealth" style="border-color: #AB47BC; color: #AB47BC;">
+                        <div class="key-number">2</div>
+                        <div class="icon">Tàng<br>Hình</div>
+                        <div class="cooldown-overlay" id="p2-cd-stealth"></div>
+                        <div class="cooldown-text" id="p2-cdt-stealth"></div>
+                    </div>
+                    <div class="slot" id="p2-skill-vampirism" style="border-color: #FF5252; color: #FF5252;">
+                        <div class="key-number">3</div>
+                        <div class="icon">Hút<br>Máu</div>
+                        <div class="cooldown-overlay" id="p2-cd-vampirism"></div>
+                        <div class="cooldown-text" id="p2-cdt-vampirism"></div>
+                    </div>
+                </div>
+
+                <!-- 2P: weapon bar for Player2 (hidden in 1P) -->
+                <div id="weaponBarP2"></div>
+            </div>
+        </div>
+
+        <div id="world-info">Map Size: 3x | Bug Fixed | Cleaned</div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen">
+        <h1>Tank Battle 2D</h1>
+        <p style="color: #4CAF50; font-weight: bold;">HỆ THỐNG NÂNG CẤP</p>
+        <p>Nhặt 2 súng giống nhau để NÂNG CẤP (Tối đa Lv.5).</p>
+        <p style="color: #ff4444;">Đạn thường không bao giờ mất, chỉ bị hạ cấp.</p>
+        <p style="color: #E91E63; font-size: 0.9rem;">CẢNH BÁO: Boss sẽ phá hủy mọi vật cản!</p>
         
-        <div class="contact-info">
-            Liên hệ <a href="https://www.facebook.com/lvmedits" target="_blank" class="contact-link">Cường Đẹp Trai</a> để biết thêm chi tiết.
+        
+
+        <div id="systemPicker" style="margin:14px auto 10px; width:min(520px, 92vw); text-align:left; background:rgba(0,0,0,0.35); border:1px solid #333; border-radius:12px; padding:12px 14px;">
+            <div style="font-weight:800; color:#FFD700; letter-spacing:0.5px; margin-bottom:8px;">CHỌN HỆ XE TĂNG</div>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; margin:6px 0; cursor:pointer;">
+                <input type="radio" name="tankSystem" value="default" checked />
+                <div>
+                    <div style="font-weight:700;">Hệ Chiến Binh</div>
+                    <div style="font-size:0.85rem; color:#aaa;">Phân thân chiến đấu • Tàng hình • Hút máu</div>
+                </div>
+            </label>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; margin:6px 0; cursor:pointer;">
+                <input type="radio" name="tankSystem" value="speed" />
+                <div>
+                    <div style="font-weight:700; color:#b3e5fc;">Hệ Tốc Độ</div>
+                    <div style="font-size:0.85rem; color:#aaa;">Lướt • Miễn thương • Cuồng tốc</div>
+                </div>
+            </label>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; margin:6px 0; cursor:pointer;">
+                <input type="radio" name="tankSystem" value="engineer" />
+                <div>
+                    <div style="font-weight:700; color:#c8e6c9;">Hệ Kỹ Sư</div>
+                    <div style="font-size:0.85rem; color:#aaa;">Tháp pháo • Sửa chữa • Xung EMP</div>
+                </div>
+            </label>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; margin:6px 0; cursor:pointer;">
+                <input type="radio" name="tankSystem" value="juggernaut" />
+                <div>
+                    <div style="font-weight:700; color:#FFD54F;">Hệ Giáp Sắt</div>
+                    <div style="font-size:0.85rem; color:#aaa;">Giáp phản lực • Cú húc • Pháo đài</div>
+                    <div style="font-size:0.78rem; color:#666; margin-top:2px;">(Giáp phản • Cú húc • Pháo đài)</div>
+                </div>
+            </label>
+
+            <label style="display:flex; gap:10px; align-items:flex-start; margin:6px 0; cursor:pointer;">
+                <input type="radio" name="tankSystem" value="mage" />
+                <div>
+                    <div style="font-weight:700; color:#CE93D8;">Hệ Pháp Sư</div>
+                    <div style="font-size:0.85rem; color:#aaa;">Hỏa cầu • Blink • Bão tuyết tự tìm mục tiêu</div>
+                </div>
+            </label>
+
+            <div style="font-size:0.8rem; color:#666; margin-top:6px;">(Các hệ đều có kỹ năng. Q/E/R để dùng.)</div>
+        </div>
+<div class="key-guide">
+            <div><span class="key">WASD</span></div><div>Di chuyển</div>
+            <div><span class="key">Chuột</span></div><div>Ngắm & Bắn</div>
+            <div><span class="key">Space</span></div><div>Tuyệt chiêu</div>
+            <div><span class="key">1-6</span></div><div>Chọn súng</div>
+            <div><span class="key">Q/E/R</span></div><div>Kỹ năng</div>
+        </div>
+
+        
+        <div class="vietkeyTip">
+            Khuyến nghị: <b>tắt VietKey/bộ gõ tiếng Việt</b> (chuyển sang EN) để di chuyển mượt mà.
+        </div>
+
+        <button class="btn" id="startBtn">TRIỂN KHAI</button>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="hidden">
+        <h2>THẤT BẠI</h2>
+        <p>Bạn đã dừng bước tại Wave <span id="finalWave" style="color: yellow">0</span></p>
+        <p>Tổng điểm: <span id="finalScore" style="color: white; font-weight: bold; font-size: 2rem;">0</span></p>
+        <button class="btn" id="restartBtn" style="background: #d32f2f;">CHƠI LẠI</button>
+        <button class="btn" id="menuBtnGO" style="background:#333; margin-top:12px;">VỀ MENU</button>
+    </div>
+
+
+    <!-- Victory Screen -->
+    <div id="victoryScreen" class="hidden">
+        <h2 style="color:#4CAF50;">CHIẾN THẮNG</h2>
+        <p>Bạn đã hạ Boss tại Wave <span id="victoryWave" style="color: yellow">0</span></p>
+        <p>Tổng điểm: <span id="victoryScore" style="color: white; font-weight: bold; font-size: 2rem;">0</span></p>
+        <p style="margin-top:8px; color:#aaa; font-size:0.95rem;">
+            Kỷ lục: Score <span id="victoryBestScore" style="color:#4CAF50; font-weight:800;">0</span> —
+            Wave <span id="victoryBestWave" style="color:#4CAF50; font-weight:800;">0</span>
+        </p>
+        <button class="btn" id="victoryRestartBtn" style="background:#18ff6a; color:#041a0c;">CHƠI LẠI</button>
+        <button class="btn" id="victoryEndlessBtn" style="background:#FFD54F; color:#1b1300; margin-top:12px;">CHƠI TIẾP (ENDLESS)</button>
+        <button class="btn" id="victoryMenuBtn" style="background:#333; margin-top:12px;">VỀ MENU</button>
+    </div>
+
+
+    
+    <!-- MAX UI: Settings + Stats -->
+    <div id="maxTopBar" class="hidden" style="position:absolute; top:20px; left:50%; transform:translateX(-50%); display:flex; gap:10px; align-items:center; z-index:200; pointer-events:auto;">
+        <button class="btn" id="btnPause" style="margin-top:0; padding:10px 14px; font-size:0.9rem; background:#333; border:1px solid #555;">PAUSE (P)</button>
+        <button class="btn" id="btnSettings" style="margin-top:0; padding:10px 14px; font-size:0.9rem; background:#333; border:1px solid #555;">SETTINGS (Esc)</button>
+    </div>
+
+    <div id="settingsModal" class="hidden" style="position:absolute; inset:0; background:rgba(0,0,0,0.75); z-index:300; display:flex; align-items:center; justify-content:center; pointer-events:auto;">
+        <div style="width:min(620px,92vw); background:rgba(10,10,10,0.95); border:2px solid #4CAF50; border-radius:14px; padding:22px; box-shadow:0 0 30px rgba(76,175,80,0.25);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="font-size:1.4rem; font-weight:800; color:#4CAF50; letter-spacing:1px;">SETTINGS</div>
+                <button class="btn" id="btnCloseSettings" style="margin-top:0; padding:10px 14px; font-size:0.9rem; background:#d32f2f;">CLOSE</button>
+            </div>
+
+            <div style="margin-top:16px; display:grid; grid-template-columns: 1fr; gap:14px; color:#ddd;">
+                <div style="display:grid; grid-template-columns: 160px 1fr 70px; gap:10px; align-items:center;">
+                    <div>Âm lượng</div>
+                    <input id="setVolume" type="range" min="0" max="1" step="0.01" />
+                    <div id="setVolumeVal" style="text-align:right; color:#FFD700; font-weight:700;">100%</div>
+                </div>
+
+                <div style="display:grid; grid-template-columns: 160px 1fr 70px; gap:10px; align-items:center;">
+                    <div>FPS cap</div>
+                    <input id="setFpsCap" type="range" min="30" max="120" step="1" />
+                    <div id="setFpsCapVal" style="text-align:right; color:#FFD700; font-weight:700;">60</div>
+                </div>
+
+                <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                    <label style="display:flex; gap:8px; align-items:center;"><input id="setShake" type="checkbox" /> Screen shake</label>
+                    <label style="display:flex; gap:8px; align-items:center;"><input id="setMinimap" type="checkbox" /> Minimap</label>
+                    <label style="display:flex; gap:8px; align-items:center;"><input id="setFps" type="checkbox" /> FPS Counter</label>
+                    <label style="display:flex; gap:8px; align-items:center;"><input id="setAutoSave" type="checkbox" /> Auto Save</label>
+                </div>
+
+                <div style="padding:10px 12px; background:rgba(255,255,255,0.05); border:1px solid rgba(255,255,255,0.12); border-radius:10px;">
+                    <div style="font-weight:800; margin-bottom:6px; color:#FFD700;">PROGRESS</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div>Best Score: <span id="bestScore" style="color:#4CAF50; font-weight:800;">0</span></div>
+                        <div>Best Wave: <span id="bestWave" style="color:#4CAF50; font-weight:800;">0</span></div>
+                    </div>
+                    <div style="margin-top:10px; display:flex; gap:10px; flex-wrap:wrap;">
+                        <button class="btn" id="btnSaveNow" style="margin-top:0; padding:10px 14px; font-size:0.9rem;">SAVE</button>
+                        <button class="btn" id="btnResetSave" style="margin-top:0; padding:10px 14px; font-size:0.9rem; background:#444; border:1px solid #666;">RESET SAVE</button>
+                    </div>
+                    </div>
+
+                <div style="font-size:0.9rem; color:#888; line-height:1.4;">
+                    Hotkeys: <span class="key">P</span> Pause/Resume, <span class="key">Esc</span> Settings, <span class="key">M</span> Minimap, <span class="key">F</span> FPS.
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Scripts -->
-    <script src="https://cdn.jsdelivr.net/particles.js/2.0.0/particles.min.js"></script>
+    <!-- SHOP (Wave Complete) -->
+    <div id="shopModal" class="hidden" style="position:absolute; inset:0; background:rgba(0,0,0,0.78); z-index:320; display:flex; align-items:center; justify-content:center; pointer-events:auto;">
+        <div style="width:min(760px,94vw); background:rgba(10,10,10,0.96); border:2px solid #FFD700; border-radius:16px; padding:22px; box-shadow:0 0 30px rgba(255,215,0,0.18);">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="font-size:1.35rem; font-weight:900; color:#FFD700; letter-spacing:1px;">SHOP</div>
+                <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end;">
+                    <div style="font-weight:900; color:#FFD700;">GOLD: <span id="shopGold">0</span></div>
+                    <div style="color:#aaa; font-weight:700;">Next wave: <span id="shopNextWave" style="color:#4CAF50;">2</span></div>
+                </div>
+            </div>
+
+            <div style="margin-top:14px; color:#cfcfcf; font-size:0.95rem; line-height:1.35;">
+                Chọn nâng cấp bằng vàng (Bước 2E/2F: Magnet Range +30px và Armor -5% đã mua được).
+            </div>
+
+            <div id="shopCards" style="margin-top:16px; display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px;">
+                <div class="shopCard" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Max HP</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+20 Max HP</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upMaxHpLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuyMaxHp" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upMaxHpCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+                <div class="shopCard" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Damage %</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+10% Damage</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upDmgLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuyDmg" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upDmgCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+                <div class="shopCard" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Fire Rate</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">-5% Cooldown</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upFireRateLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuyFireRate" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upFireRateCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+                <div class="shopCard" style="background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Động Cơ</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+5% Tốc Độ</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upSpeedLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuySpeed" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upSpeedCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+
+                <div class="shopCard" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Pickup Range</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">+30px Magnet</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upMagnetLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuyMagnet" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upMagnetCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+                <div class="shopCard" style="background:rgba(255,255,255,0.06); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px;">
+                    <div style="font-weight:900; color:#fff;">Armor</div>
+                    <div style="margin-top:6px; color:#999; font-size:0.9rem;">-5% Damage Taken</div>
+                    <div style="margin-top:8px; color:#bbb; font-size:0.85rem;">Level: <span id="upArmorLevel" style="color:#FFD700; font-weight:900;">0</span></div>
+                    <button class="btn" id="btnBuyArmor" style="margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem;">BUY <span style="opacity:0.9;">(</span><span id="upArmorCost">50</span><span style="opacity:0.9;">G)</span></button>
+                </div>
+
+            </div>
+
+            <div style="margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+                <div style="font-size:0.9rem; color:#888;">Nhấn <span class="key">Enter</span> để tiếp tục.</div>
+                <button class="btn" id="btnShopContinue" style="margin-top:0; padding:12px 16px;">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+    <script type="module" src="js/main.js"></script>
+
+    <!-- 2P: show/hide P2 skill bar based on playerCount -->
     <script>
-        particlesJS("particles-js", {
-            "particles": {
-                "number": { "value": 80, "density": { "enable": true, "value_area": 800 } },
-                "color": { "value": "#00d2ff" },
-                "shape": { "type": "circle" },
-                "opacity": { "value": 0.5, "random": false },
-                "size": { "value": 3, "random": true },
-                "line_linked": { "enable": true, "distance": 150, "color": "#00d2ff", "opacity": 0.4, "width": 1 },
-                "move": { "enable": true, "speed": 2, "direction": "none", "random": false, "straight": false, "out_mode": "out", "bounce": false }
-            },
-            "interactivity": {
-                "detect_on": "canvas",
-                "events": { "onhover": { "enable": true, "mode": "grab" }, "onclick": { "enable": true, "mode": "push" }, "resize": true },
-                "modes": { "grab": { "distance": 140, "line_linked": { "opacity": 1 } }, "push": { "particles_nb": 4 } }
-            },
-            "retina_detect": true
-        });
-    </script>
+(function(){
+  const el = document.getElementById('skillBarP2');
+  if (!el) return;
+
+  function getPlayerCount(){
+    try {
+      const gs = window.Game && window.Game.settings;
+      if (gs && gs.playerCount != null) return Number(gs.playerCount);
+    } catch (e) {}
+    try {
+      const raw = localStorage.getItem('tb_settings');
+      if (raw) {
+        const s = JSON.parse(raw);
+        if (s && s.playerCount != null) return Number(s.playerCount);
+      }
+    } catch (e) {}
+    return 1;
+  }
+
+  function apply(){
+    const pc = getPlayerCount();
+    el.style.display = (pc === 2) ? 'flex' : 'none';
+  }
+
+  apply();
+
+  // Re-apply after starting the game (settings may be written on Start)
+  document.addEventListener('click', (e) => {
+    const t = e.target;
+    if (!t) return;
+    if (t.id === 'startBtn' || (t.closest && t.closest('#startBtn'))) {
+      setTimeout(apply, 0);
+      setTimeout(apply, 100);
+    }
+  }, true);
+
+  // If settings change in another tab
+  window.addEventListener('storage', (e) => {
+    if (e && e.key === 'tb_settings') apply();
+  });
+})();
+</script>
+
+    <!-- Hidden Admin Code Modal -->
+    <div id="adminCodeModal" class="hidden">
+        <div id="adminCodePanel">
+            <h3>ADMIN</h3>
+            <input id="adminCodeInput" type="password" autocomplete="off" spellcheck="false" placeholder="Nhập code..." />
+            <div id="adminCodeMsg"></div>
+        </div>
+    </div>
+
+
+    <div id="copyrightBadge">Bản quyền: Cuongdz © 2026</div>
+
+
+    <!-- VietKey confirmation (pre-game) -->
+    <div id="vietkeyModal" class="hidden">
+        <div id="vietkeyPanel">
+            <div style="display:flex; align-items:center; justify-content:space-between; gap:12px;">
+                <div style="font-weight:900; color:#18ff6a; letter-spacing:2px;">LƯU Ý</div>
+                <div style="opacity:0.8; font-size:12px;">(Enter = Rồi, Esc = Chưa)</div>
+            </div>
+            <div style="margin-top:10px; color:#ddd; line-height:1.4;">
+                VietKey/bộ gõ tiếng Việt có thể làm <b>lag phím</b>. Bạn đã tắt VietKey (chuyển EN) chưa?
+            </div>
+            <div style="margin-top:14px; display:flex; gap:10px; justify-content:flex-end;">
+                <button class="btn" id="vkNo" style="background:#333;">Chưa</button>
+                <button class="btn" id="vkYes" style="background:#18ff6a; color:#041a0c;">Rồi</button>
+            </div>
+        </div>
+    </div>
+
 </body>
 </html>
