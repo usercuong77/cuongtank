@@ -22,11 +22,30 @@ export class MageTank extends PlayerBase {
       moving: true,
       dirAngle: 0
     };
+
+    // STEP 12: remember last move direction for Blink in Easy/2P (no mouse)
+    this.lastMoveDir = { x: 1, y: 0 };
   }
 
   update(input, obstacles, enemies, projectiles, clones, turrets, pickups, coins, bossMines, game) {
     // Core update (movement, shooting, collisions, cooldown UI)
     super.update(input, obstacles, enemies, projectiles, clones, turrets, pickups, coins, bossMines, game);
+
+    // STEP 12: track last non-zero move direction (works for both P1 WASD and P2 Arrows via Input mapping)
+    try {
+      let mdx = 0, mdy = 0;
+      if (input && input.keys) {
+        if (input.keys.w) mdy -= 1;
+        if (input.keys.s) mdy += 1;
+        if (input.keys.a) mdx -= 1;
+        if (input.keys.d) mdx += 1;
+      }
+      if (mdx !== 0 || mdy !== 0) {
+        const len = Math.hypot(mdx, mdy) || 1;
+        this.lastMoveDir.x = mdx / len;
+        this.lastMoveDir.y = mdy / len;
+      }
+    } catch (e) {}
 
     const { Game } = getPlayerContext();
     if (!Game) return;
@@ -140,49 +159,175 @@ export class MageTank extends PlayerBase {
       return;
     }
 
-    // E - Blink (forward)
+    // E - Blink
+    // - Hard (1P): blink to mouse (existing behavior)
+    // - Easy/2P: blink along move direction (no mouse), with anti-stuck + avoid teleport into enemies
     if (skillKey === 'stealth') {
-      const dist = 220 * 5;
+      const { Input } = getPlayerContext();
+      if (!Input) return;
+
+      const noMouseMode = (typeof this.isEasyAimMode === 'function') ? this.isEasyAimMode() : false;
+
       const oldX = this.x;
       const oldY = this.y;
-
       createComplexExplosion(oldX, oldY, '#E040FB', 14);
 
-      const dirX = Math.cos(this.angle);
-      const dirY = Math.sin(this.angle);
-
-      const obs = Game.obstacles || [];
       const r = (this.radius != null) ? this.radius : 22;
+      const obs = Game.obstacles || [];
+      const enemyList = Game.enemies || [];
+      const avoidEnemies = noMouseMode;
 
-      let placed = false;
-      for (let d = dist; d >= 40; d -= 20) {
-        const tx = oldX + dirX * d;
-        const ty = oldY + dirY * d;
+      const isBlockedAt = (tx, ty) => {
+        // obstacles
+        if (obs && obs.length) {
+          for (const o of obs) {
+            if (checkCircleRect({ x: tx, y: ty, radius: r }, o)) return true;
+          }
+        }
+        // enemies (avoid teleport into/too close)
+        if (avoidEnemies && enemyList && enemyList.length) {
+          for (const e of enemyList) {
+            if (!e || e.markedForDeletion || e.hp <= 0) continue;
+            const er = (e.radius != null) ? e.radius : 20;
+            const d = Math.hypot(e.x - tx, e.y - ty);
+            if (d <= (r + er + 8)) return true;
+          }
+        }
+        return false;
+      };
 
-        // Clamp
-        const cx = Math.max(r, Math.min(WORLD_WIDTH - r, tx));
-        const cy = Math.max(r, Math.min(WORLD_HEIGHT - r, ty));
+      if (!noMouseMode) {
+        // HARD: blink to mouse world position (existing)
+        const cam = (Game && Game.camera) ? Game.camera : (globalThis.Camera || { x: 0, y: 0 });
+        const worldMouseX = Input.mouse.x + (cam.x || 0);
+        const worldMouseY = Input.mouse.y + (cam.y || 0);
 
-        let blocked = false;
+        this.x = worldMouseX;
+        this.y = worldMouseY;
+
+        // Clamp into world
+        this.x = Math.max(r, Math.min(WORLD_WIDTH - r, this.x));
+        this.y = Math.max(r, Math.min(WORLD_HEIGHT - r, this.y));
+      } else {
+        // STEP 12: Easy/2P blink by move direction (fallback to turret angle)
+        let dirX = (this.lastMoveDir && typeof this.lastMoveDir.x === 'number') ? this.lastMoveDir.x : 0;
+        let dirY = (this.lastMoveDir && typeof this.lastMoveDir.y === 'number') ? this.lastMoveDir.y : 0;
+
+        // If currently moving, prefer live input direction
+        try {
+          let mdx = 0, mdy = 0;
+          if (Input && Input.keys) {
+            if (Input.keys.w) mdy -= 1;
+            if (Input.keys.s) mdy += 1;
+            if (Input.keys.a) mdx -= 1;
+            if (Input.keys.d) mdx += 1;
+          }
+          if (mdx !== 0 || mdy !== 0) {
+            const len = Math.hypot(mdx, mdy) || 1;
+            dirX = mdx / len;
+            dirY = mdy / len;
+          }
+        } catch (e) {}
+
+        if (Math.abs(dirX) < 0.0001 && Math.abs(dirY) < 0.0001) {
+          dirX = Math.cos(this.angle);
+          dirY = Math.sin(this.angle);
+        }
+
+        const baseAng = Math.atan2(dirY, dirX);
+        const maxDist = 240;
+        const dists = [maxDist, 220, 200, 180, 160, 140, 120, 100, 80, 60];
+        const angOffs = [0, Math.PI/12, -Math.PI/12, Math.PI/6, -Math.PI/6, Math.PI/4, -Math.PI/4, Math.PI/3, -Math.PI/3, Math.PI/2, -Math.PI/2];
+
+        let found = false;
+        let bestX = oldX;
+        let bestY = oldY;
+
+        for (const dist of dists) {
+          for (const off of angOffs) {
+            const a = baseAng + off;
+            let tx = oldX + Math.cos(a) * dist;
+            let ty = oldY + Math.sin(a) * dist;
+
+            // Clamp
+            tx = Math.max(r, Math.min(WORLD_WIDTH - r, tx));
+            ty = Math.max(r, Math.min(WORLD_HEIGHT - r, ty));
+
+            if (!isBlockedAt(tx, ty)) {
+              bestX = tx;
+              bestY = ty;
+              found = true;
+              break;
+            }
+          }
+          if (found) break;
+        }
+
+        this.x = bestX;
+        this.y = bestY;
+      }
+
+      // Anti-stuck: push out of obstacles gently (keeps original stable behavior)
+      if (obs && obs.length) {
+        for (let t = 0; t < 10; t++) {
+          let stuck = false;
+          for (const o of obs) {
+            if (checkCircleRect({ x: this.x, y: this.y, radius: r }, o)) {
+              const ocx = o.x + o.width / 2;
+              const ocy = o.y + o.height / 2;
+              const ang = Math.atan2(this.y - ocy, this.x - ocx);
+              this.x += Math.cos(ang) * 8;
+              this.y += Math.sin(ang) * 8;
+              stuck = true;
+            }
+          }
+          this.x = Math.max(r, Math.min(WORLD_WIDTH - r, this.x));
+          this.y = Math.max(r, Math.min(WORLD_HEIGHT - r, this.y));
+          if (!stuck) break;
+        }
+
+        // Fallback spiral search if still stuck
+        let stillStuck = false;
         for (const o of obs) {
-          if (checkCircleRect({ x: cx, y: cy, radius: r + 2 }, o)) {
-            blocked = true;
+          if (checkCircleRect({ x: this.x, y: this.y, radius: r }, o)) {
+            stillStuck = true;
             break;
           }
         }
 
-        if (!blocked) {
-          this.x = cx;
-          this.y = cy;
-          placed = true;
-          break;
-        }
-      }
+        if (stillStuck) {
+          const baseX = this.x;
+          const baseY = this.y;
+          let found = false;
+          for (let rad = 10; rad <= 220 && !found; rad += 10) {
+            for (let a = 0; a < Math.PI * 2; a += Math.PI / 8) {
+              const tx = baseX + Math.cos(a) * rad;
+              const ty = baseY + Math.sin(a) * rad;
+              const cx = Math.max(r, Math.min(WORLD_WIDTH - r, tx));
+              const cy = Math.max(r, Math.min(WORLD_HEIGHT - r, ty));
 
-      // If everything is blocked, stay put (avoid clipping into rocks)
-      if (!placed) {
-        this.x = oldX;
-        this.y = oldY;
+              if (isBlockedAt(cx, cy)) continue;
+
+              let blocked = false;
+              for (const o of obs) {
+                if (checkCircleRect({ x: cx, y: cy, radius: r }, o)) {
+                  blocked = true;
+                  break;
+                }
+              }
+              if (!blocked) {
+                this.x = cx;
+                this.y = cy;
+                found = true;
+                break;
+              }
+            }
+          }
+          if (!found) {
+            this.x = oldX;
+            this.y = oldY;
+          }
+        }
       }
 
       createComplexExplosion(this.x, this.y, '#E040FB', 14);

@@ -82,7 +82,7 @@ export class CloneTank extends GameObject {
         const finalAmount = Math.max(1, Math.round(amount * (1 - reduction)));
 
         this.hp -= finalAmount;
-        Game.ui.updateHealth(this.hp, this.maxHp);
+        Game.ui.updateHealth(this.hp, this.maxHp, this.ownerPlayer?.playerIndex || 1);
         createDamageText(this.x, this.y - 20, `-${finalAmount}`, COLORS.clone);
 
         if (this.hp <= 0) { this.markedForDeletion = true; createComplexExplosion(this.x, this.y, COLORS.clone); }

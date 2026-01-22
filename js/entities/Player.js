@@ -14,6 +14,7 @@ import {
 } from '../constants.js';
 import {
   checkCircleRect,
+  isLineBlocked,
   createDamageText,
   createComplexExplosion,
   createMuzzleFlash,
@@ -56,6 +57,9 @@ export class PlayerBase extends GameObject {
 
     // Aim
     this.angle = 0;
+
+    // Easy mode target lock (STEP 3)
+    this.target = null;
 
     // Weapons
     this.inventory = [{ id: 'NORMAL', level: 1 }];
@@ -104,7 +108,7 @@ export class PlayerBase extends GameObject {
     if (this.currentWeaponIndex >= this.inventory.length) this.currentWeaponIndex = 0;
     this.ultiCharge = 100;
     createDamageText(this.x, this.y - 60, 'CHEAT ACTIVATED!', '#FFD700');
-    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
     Game?.ui?.updateUltiBar?.(this.ultiCharge);
   }
 
@@ -126,13 +130,13 @@ export class PlayerBase extends GameObject {
         this.selectWeapon(this.inventory.length - 1);
       }
     }
-    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
   }
 
   selectWeapon(index) {
     if (index >= 0 && index < this.inventory.length) this.currentWeaponIndex = index;
     else this.currentWeaponIndex = 0;
-    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
   }
 
   loseCurrentWeapon() {
@@ -143,7 +147,7 @@ export class PlayerBase extends GameObject {
     if (!this.inventory || this.inventory.length === 0) {
       this.inventory = [{ id: 'NORMAL', level: 1 }];
       this.currentWeaponIndex = 0;
-      Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+      Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
       return;
     }
 
@@ -160,7 +164,7 @@ export class PlayerBase extends GameObject {
     const currentWep = this.inventory[this.currentWeaponIndex];
     if (!currentWep) {
       this.currentWeaponIndex = 0;
-      Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+      Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
       return;
     }
 
@@ -172,7 +176,7 @@ export class PlayerBase extends GameObject {
       } else {
         currentWep.level = 1;
       }
-      Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+      Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
       return;
     }
 
@@ -186,7 +190,7 @@ export class PlayerBase extends GameObject {
       createDamageText(this.x, this.y - 60, 'MẤT VŨ KHÍ!', '#ff4444');
     }
 
-    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex);
+    Game?.ui?.updateWeaponInventory?.(this.inventory, this.currentWeaponIndex, this.playerIndex || 1);
   }
 
   getCurrentWeaponObj() {
@@ -249,6 +253,149 @@ export class PlayerBase extends GameObject {
     Game?.ui?.updateUltiBar?.(this.ultiCharge);
   }
 
+  // ==============================
+  // STEP 3: Easy mode target-lock aim (no mouse)
+  // ==============================
+  isEasyAimMode() {
+    // Prefer live in-memory settings (STEP 1).
+    try {
+      const gs = Game && Game.settings ? Game.settings : null;
+      if (gs) {
+        const pc = Number(gs.playerCount ?? 1);
+        // STEP 8: In 2P we use auto-aim + auto-shoot for both players (no mouse).
+        if (pc === 2) return true;
+        const d = gs.difficulty;
+        if (d) return String(d) === 'easy';
+      }
+    } catch (e) {}
+
+    // Fallback to persisted settings (if player entered game directly).
+    try {
+      const raw = localStorage.getItem('tb_settings');
+      if (raw) {
+        const s = JSON.parse(raw);
+        const pc = Number(s && s.playerCount != null ? s.playerCount : 1);
+        if (pc === 2) return true;
+        return String(s && s.difficulty ? s.difficulty : 'hard') === 'easy';
+      }
+    } catch (e) {}
+
+    return false;
+  }
+
+  isTargetValid(t) {
+    if (!t) return false;
+    if (t.markedForDeletion) return false;
+    if (typeof t.hp === 'number' && t.hp <= 0) return false;
+    if (typeof t.x !== 'number' || typeof t.y !== 'number') return false;
+
+    // If too far, allow reacquire. (Keeps behavior stable on big maps.)
+    const d = Math.hypot(t.x - this.x, t.y - this.y);
+    // Boss can spawn far away on boss waves; allow a larger lock range so auto-aim/auto-shoot works
+    // even when no minions are present.
+    const maxRange = (t && (t.typeKey === 'BOSS' || t.isBoss)) ? 10000 : 1600;
+    return d <= maxRange;
+  }
+
+  acquireTarget(enemies, obstacles) {
+    const list = Array.isArray(enemies) ? enemies : [];
+
+    let best = null;
+    let bestD2 = Infinity;
+
+    let bestUnblocked = null;
+    let bestUnblockedD2 = Infinity;
+
+    const hasObs = Array.isArray(obstacles) && obstacles.length > 0;
+
+    for (const e of list) {
+      if (!e || e.markedForDeletion) continue;
+      if (typeof e.hp === 'number' && e.hp <= 0) continue;
+      if (typeof e.x !== 'number' || typeof e.y !== 'number') continue;
+
+      const dx = e.x - this.x;
+      const dy = e.y - this.y;
+      const d2 = dx * dx + dy * dy;
+
+      if (d2 < bestD2) {
+        bestD2 = d2;
+        best = e;
+      }
+
+      // Optional: prefer target not blocked by obstacles
+      if (hasObs) {
+        if (!isLineBlocked(this.x, this.y, e.x, e.y, obstacles)) {
+          if (d2 < bestUnblockedD2) {
+            bestUnblockedD2 = d2;
+            bestUnblocked = e;
+          }
+        }
+      }
+    }
+
+    this.target = bestUnblocked || best || null;
+    return this.target;
+  }
+
+  updateAim(enemies, obstacles) {
+    if (!this.isEasyAimMode()) return;
+
+    if (!this.isTargetValid(this.target)) {
+      this.acquireTarget(enemies, obstacles);
+    }
+
+    if (this.target) {
+      this.angle = Math.atan2(this.target.y - this.y, this.target.x - this.x);
+    }
+  }
+
+  // STEP 5: Cycle target (Easy mode)
+  // - Press T to switch to the next valid enemy in range.
+  cycleTarget(enemies, obstacles) {
+    const list = Array.isArray(enemies) ? enemies : [];
+    if (list.length === 0) {
+      this.target = null;
+      return null;
+    }
+
+    const maxRange = 1600;
+    const hasObs = Array.isArray(obstacles) && obstacles.length > 0;
+
+    const candidates = [];
+    const candidatesUnblocked = [];
+
+    for (const e of list) {
+      if (!e || e.markedForDeletion) continue;
+      if (typeof e.hp === 'number' && e.hp <= 0) continue;
+      if (typeof e.x !== 'number' || typeof e.y !== 'number') continue;
+
+      const dx = e.x - this.x;
+      const dy = e.y - this.y;
+      const d2 = dx * dx + dy * dy;
+      if (d2 > maxRange * maxRange) continue;
+
+      const item = { e, d2 };
+      candidates.push(item);
+      if (hasObs && !isLineBlocked(this.x, this.y, e.x, e.y, obstacles)) {
+        candidatesUnblocked.push(item);
+      }
+    }
+
+    const pick = (hasObs && candidatesUnblocked.length > 0) ? candidatesUnblocked : candidates;
+    if (pick.length === 0) {
+      this.target = null;
+      return null;
+    }
+
+    pick.sort((a, b) => a.d2 - b.d2);
+    const curIdx = this.target ? pick.findIndex(it => it.e === this.target) : -1;
+    const next = pick[(curIdx + 1) % pick.length].e;
+
+    this.target = next;
+    this.angle = Math.atan2(next.y - this.y, next.x - this.x);
+    return next;
+  }
+
   update(input, obstacles, enemies, projectiles, clones, turrets, pickups, coins, bossMines, game) {
     // Keep original injection behavior (used by other modules)
     if (game) Game = game;
@@ -264,13 +411,51 @@ export class PlayerBase extends GameObject {
 
     if (!Input) return;
 
-    // Weapon hotkeys
-    if (Input.keys['1']) this.selectWeapon(0);
-    if (Input.keys['2']) this.selectWeapon(1);
-    if (Input.keys['3']) this.selectWeapon(2);
-    if (Input.keys['4']) this.selectWeapon(3);
-    if (Input.keys['5']) this.selectWeapon(4);
-    if (Input.keys['6']) this.selectWeapon(5);
+    // STEP 3.3: Downed (hp <= 0) => disable control/shoot/skills.
+    // Draw is handled elsewhere, so we only early-exit update logic here.
+    if (this.hp <= 0) {
+      // Stop special movement states so subclasses won't keep moving the player after death.
+      if (this.dash) {
+        this.dash.active = false;
+        this.dash.vx = 0;
+        this.dash.vy = 0;
+      }
+      if (this.ram) {
+        this.ram.active = false;
+        this.ram.vx = 0;
+        this.ram.vy = 0;
+        if (this.ram.hitSet && this.ram.hitSet.clear) this.ram.hitSet.clear();
+      }
+      return;
+    }
+
+    // AMMO_CYCLE_PATCH:
+    // - 1P: keep original weapon hotkeys 1-6
+    // - 2P: cycle ammo per-player (P1: V, P2: Enter) to avoid conflict with P2 skills 1/2/3
+    const __pc = Number((Game && Game.settings && Game.settings.playerCount != null) ? Game.settings.playerCount : 1);
+    const __is2P = (__pc === 2);
+    if (__is2P) {
+      const invLen = Array.isArray(this.inventory) ? this.inventory.length : 0;
+      if (invLen > 0) {
+        const doCycle = () => {
+          const cur = (this.currentWeaponIndex != null ? (this.currentWeaponIndex | 0) : 0);
+          const next = (cur + 1) % invLen;
+          this.selectWeapon(next);
+        };
+
+        const ap = (Input && Input.activePlayer != null) ? (Input.activePlayer | 0) : 1;
+        if (ap === 1 && Input.consumeCycleAmmoP1 && Input.consumeCycleAmmoP1()) doCycle();
+        if (ap === 2 && Input.consumeCycleAmmoP2 && Input.consumeCycleAmmoP2()) doCycle();
+      }
+    } else {
+      // Weapon hotkeys (original)
+      if (Input.keys['1']) this.selectWeapon(0);
+      if (Input.keys['2']) this.selectWeapon(1);
+      if (Input.keys['3']) this.selectWeapon(2);
+      if (Input.keys['4']) this.selectWeapon(3);
+      if (Input.keys['5']) this.selectWeapon(4);
+      if (Input.keys['6']) this.selectWeapon(5);
+    }
 
     // Skill hotkeys (subclass handles)
     if (Input.keys['q']) this.useSkill('clone');
@@ -339,11 +524,27 @@ export class PlayerBase extends GameObject {
     this.x = Math.max(this.radius, Math.min(WORLD_WIDTH - this.radius, this.x));
     this.y = Math.max(this.radius, Math.min(WORLD_HEIGHT - this.radius, this.y));
 
-    // Aim (core): use Game.camera if exists, else fallback global Camera
-    const cam = (Game && Game.camera) ? Game.camera : (globalThis.Camera || { x: 0, y: 0 });
-    const worldMouseX = Input.mouse.x + (cam.x || 0);
-    const worldMouseY = Input.mouse.y + (cam.y || 0);
-    this.angle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
+    // Aim (core):
+    // - Hard: aim by mouse (original behavior)
+    // - Easy: auto-aim by target lock (STEP 3)
+    if (this.isEasyAimMode()) {
+      const ap = (Input?.activePlayer ?? 1);
+
+      // STEP 5 / STEP 9: Switch target (per-player)
+      if (ap === 1 && Input?.consumeSwitchTargetP1 && Input.consumeSwitchTargetP1()) {
+        this.cycleTarget(enemies || (Game ? Game.enemies : null), obstacles || (Game ? Game.obstacles : null));
+      }
+
+      if (ap === 2 && Input?.consumeSwitchTargetP2 && Input.consumeSwitchTargetP2()) {
+        this.cycleTarget(enemies || (Game ? Game.enemies : null), obstacles || (Game ? Game.obstacles : null));
+      }
+      this.updateAim(enemies || (Game ? Game.enemies : null), obstacles || (Game ? Game.obstacles : null));
+    } else {
+      const cam = (Game && Game.camera) ? Game.camera : (globalThis.Camera || { x: 0, y: 0 });
+      const worldMouseX = Input.mouse.x + (cam.x || 0);
+      const worldMouseY = Input.mouse.y + (cam.y || 0);
+      this.angle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
+    }
 
     // Expire ITEM buffs (core)
     if (this.buffs.shield.active && now > this.buffs.shield.endTime) {
@@ -358,16 +559,21 @@ export class PlayerBase extends GameObject {
     }
 
     // Shooting (core)
-    if (Input.mouse.down) this.shoot(obstacles);
+    // STEP 4: Easy mode auto-shoot (no mouse click). Hard keeps original mouse-left shooting.
+    if (this.isEasyAimMode()) {
+      if (this.isTargetValid(this.target)) this.shoot(obstacles);
+    } else {
+      if (Input.mouse.down) this.shoot(obstacles);
+    }
 
     // UI cooldown display (core; tank may keep same 3 keys)
     const c1 = getSystemSkillDef(this.systemId, 'clone');
     const c2 = getSystemSkillDef(this.systemId, 'stealth');
     const c3 = getSystemSkillDef(this.systemId, 'vampirism');
     if (Game?.ui?.updateSkillCooldown) {
-      if (c1) Game.ui.updateSkillCooldown('clone', this.skills.clone.lastUsed, c1.cooldown);
-      if (c2) Game.ui.updateSkillCooldown('stealth', this.skills.stealth.lastUsed, c2.cooldown);
-      if (c3) Game.ui.updateSkillCooldown('vampirism', this.skills.vampirism.lastUsed, c3.cooldown);
+      if (c1) Game.ui.updateSkillCooldown('clone', this.skills.clone.lastUsed, c1.cooldown, (this.playerIndex || 1));
+      if (c2) Game.ui.updateSkillCooldown('stealth', this.skills.stealth.lastUsed, c2.cooldown, (this.playerIndex || 1));
+      if (c3) Game.ui.updateSkillCooldown('vampirism', this.skills.vampirism.lastUsed, c3.cooldown, (this.playerIndex || 1));
     }
 
     this.validatePosition();
@@ -463,7 +669,10 @@ export class PlayerBase extends GameObject {
       const tipY = this.y + Math.sin(this.angle) * muzzleDist;
 
       const spawnBullet = (ang) => {
-        Game?.projectiles?.push?.(new Bullet(tipX, tipY, ang, weaponObj.id, finalConfig, 'PLAYER'));
+        // Vampirism (2P): ensure bullets know who should receive leech healing
+        const b = new Bullet(tipX, tipY, ang, weaponObj.id, finalConfig, 'PLAYER');
+        b.leechOwner = this;
+        Game?.projectiles?.push?.(b);
         createMuzzleFlash(tipX, tipY, ang, finalConfig.color);
       };
 
@@ -524,7 +733,7 @@ export class PlayerBase extends GameObject {
     this.hp -= finalAmount;
     if (this.hp < 0) this.hp = 0;
 
-    Game?.ui?.updateHealth?.(this.hp, this.maxHp);
+    Game?.ui?.updateHealth?.(this.hp, this.maxHp, this.playerIndex || 1);
     if (Game) Game.shake = 10;
 
     return finalAmount;
@@ -532,7 +741,7 @@ export class PlayerBase extends GameObject {
 
   heal(amount) {
     this.hp = Math.min(this.hp + amount, this.maxHp);
-    Game?.ui?.updateHealth?.(this.hp, this.maxHp);
+    Game?.ui?.updateHealth?.(this.hp, this.maxHp, this.playerIndex || 1);
     createDamageText(this.x, this.y - 20, `+${Math.floor(amount)}`, '#4CAF50');
   }
 

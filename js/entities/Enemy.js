@@ -99,7 +99,7 @@ export class Enemy extends GameObject {
    * Update enemy logic.
    * NOTE: Keep legacy signature expansion but preserve original behavior.
    */
-  update(player, clones, obstacles, enemies, projectiles, bossMines) {
+  update(players, clones, obstacles, enemies, projectiles, bossMines) {
     // Capture injected refs (for spawning bullets/minions/mines)
     this._projectilesRef = projectiles || (GameRef ? GameRef.projectiles : null);
     this._enemiesRef = enemies || (GameRef ? GameRef.enemies : null);
@@ -124,8 +124,20 @@ export class Enemy extends GameObject {
       else slowMult = this.effects.slow.mult || 1;
     }
 
+    // STEP 11: In co-op, enemies should chase the nearest player (not only P1).
+    // Back-compat: older callsites may still pass a single player object.
+    const playerList = Array.isArray(players)
+      ? players
+      : (players ? [players] : (GameRef && Array.isArray(GameRef.players) ? GameRef.players : []));
+
     let targets = [];
-    if (player && !player.isStealth) targets.push(player);
+    for (const p of playerList) {
+      if (!p) continue;
+      // STEP 3.2: ignore dead players in co-op (hp <= 0)
+      if (p.hp != null && p.hp <= 0) continue;
+      if (p.isStealth) continue;
+      targets.push(p);
+    }
     targets = targets.concat(clones || []);
 
     let target = null;

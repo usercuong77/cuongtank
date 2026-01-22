@@ -102,35 +102,19 @@ export class Juggernaut extends PlayerBase {
   }
 
   // Juggernaut core update (adds: Siege speed/size + Ram physics/impact)
-  update(input, obstacles, enemies, projectiles, clones, turrets, pickups, coins, bossMines, game) {
-    // Keep original injection behavior
-    if (game) setPlayerContext({ Game: game });
+
+  // Juggernaut core update (adds: Siege speed/size + Ram physics/impact)
+  // NOTE: Keep base PlayerBase logic (aim mode, auto-shoot, ammo cycle, UI cooldown) via super.update().
+  update(input, obstacles, enemies, projectiles, pickups) {
+    // Ensure skills can read current input (used in useSkill())
     if (input) setPlayerContext({ Input: input });
 
     const ctx = getPlayerContext();
     const Game = ctx.Game;
-    const Input = ctx.Input;
-
-    if (enemies && Game) Game.enemies = enemies;
-    if (projectiles && Game) Game.projectiles = projectiles;
-    if (clones && Game) Game.clones = clones;
-    if (turrets && Game) Game.turrets = turrets;
-    if (pickups && Game) Game.pickups = pickups;
-    if (coins && Game) Game.coins = coins;
-    if (bossMines && Game) Game.bossMines = bossMines;
-    if (obstacles && Game) Game.obstacles = obstacles;
-
+    const Input = input || ctx.Input;
     if (!Input) return;
 
-    // Weapon hotkeys
-    if (Input.keys['1']) this.selectWeapon(0);
-    if (Input.keys['2']) this.selectWeapon(1);
-    if (Input.keys['3']) this.selectWeapon(2);
-    if (Input.keys['4']) this.selectWeapon(3);
-    if (Input.keys['5']) this.selectWeapon(4);
-    if (Input.keys['6']) this.selectWeapon(5);
-
-    // Skill hotkeys (mapping stays: q/e/r => clone/stealth/vampirism)
+    // Trigger skills/ultimate using core-mapped keys (q/e/r/space)
     if (Input.keys['q']) this.useSkill('clone');
     if (Input.keys['e']) this.useSkill('stealth');
     if (Input.keys['r']) this.useSkill('vampirism');
@@ -240,7 +224,7 @@ export class Juggernaut extends PlayerBase {
       const list = enemies || Game?.enemies || [];
       for (const e of list) {
         if (!e || e.markedForDeletion || e.hp <= 0) continue;
-        if (e.typeKey === 'BOSS') continue; // an toàn: J2 chưa đẩy Boss
+        if (e.typeKey === 'BOSS') continue; // safety: J2 doesn't push boss
 
         const er = (e.radius || (e.config && e.config.radius) || 18);
         const d = Math.hypot(e.x - this.x, e.y - this.y);
@@ -263,40 +247,40 @@ export class Juggernaut extends PlayerBase {
         e.y = Math.max(er, Math.min(WORLD_HEIGHT - er, e.y));
       }
     }
+    // Run core logic (aim mode, auto-shoot, ammo cycle, UI cooldown)
+    // without core movement + without double skill triggers.
+    const keyObj = Input.keys;
+    const keysToOverride = ['w', 'a', 's', 'd', 'q', 'e', 'r', ' '];
+    const hadOwn = {};
+    const prevVal = {};
 
-    // Aim (same as PlayerBase)
-    const cam = (Game && Game.camera) ? Game.camera : (globalThis.Camera || { x: 0, y: 0 });
-    const worldMouseX = Input.mouse.x + (cam.x || 0);
-    const worldMouseY = Input.mouse.y + (cam.y || 0);
-    this.angle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
-
-    // Expire ITEM buffs (core)
-    if (this.buffs.shield && this.buffs.shield.active && now > this.buffs.shield.endTime) {
-      this.buffs.shield.active = false;
-      const overlay = document.getElementById('shieldOverlay');
-      if (overlay) overlay.style.display = 'none';
-      Game?.ui?.removeBuff?.('Shield');
-    }
-    if (this.buffs.rapid && this.buffs.rapid.active && now > this.buffs.rapid.endTime) {
-      this.buffs.rapid.active = false;
-      Game?.ui?.removeBuff?.('Rapid');
+    if (keyObj && typeof keyObj === 'object') {
+      for (const k of keysToOverride) {
+        hadOwn[k] = Object.prototype.hasOwnProperty.call(keyObj, k);
+        prevVal[k] = keyObj[k];
+        keyObj[k] = false;
+      }
     }
 
-    // Shooting
-    if (Input.mouse.down) this.shoot(obstacles);
-
-    // UI cooldown display
-    const c1 = getSystemSkillDef(this.systemId, 'clone');
-    const c2 = getSystemSkillDef(this.systemId, 'stealth');
-    const c3 = getSystemSkillDef(this.systemId, 'vampirism');
-    if (Game?.ui?.updateSkillCooldown) {
-      if (c1) Game.ui.updateSkillCooldown('clone', this.skills.clone.lastUsed, c1.cooldown);
-      if (c2) Game.ui.updateSkillCooldown('stealth', this.skills.stealth.lastUsed, c2.cooldown);
-      if (c3) Game.ui.updateSkillCooldown('vampirism', this.skills.vampirism.lastUsed, c3.cooldown);
+    try {
+      super.update.apply(this, arguments);
+    } finally {
+      if (keyObj && typeof keyObj === 'object') {
+        for (const k of keysToOverride) {
+          if (hadOwn[k]) keyObj[k] = prevVal[k];
+          else delete keyObj[k];
+        }
+      }
     }
 
-    this.validatePosition();
+    // Keep Jugger's effective speed/radius after super.update (super may overwrite speed).
+    this.speed = effSpeed;
+    if (this.baseRadius) {
+      const sm = (this.buffs.siege && this.buffs.siege.active) ? (this.buffs.siege.sizeMult || 1.35) : 1;
+      this.radius = this.baseRadius * sm;
+    }
   }
+
 
   // Override shoot: Siege Mode forces ROCKET + fire rate multiplier
   shoot(obstacles) {
@@ -465,7 +449,7 @@ export class Juggernaut extends PlayerBase {
 
     this.hp -= finalAmount;
     if (this.hp < 0) this.hp = 0;
-    if (Game && Game.ui) Game.ui.updateHealth(this.hp, this.maxHp);
+    if (Game && Game.ui) Game.ui.updateHealth(this.hp, this.maxHp, this.playerIndex || 1);
     if (Game) Game.shake = 10;
   }
 

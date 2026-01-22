@@ -30,7 +30,15 @@ export const WaveManager = {
     startWave() {
         this.active = true; this.bossSpawned = false; this.isBossWave = (this.wave % 5 === 0); this.scaling = this.computeScaling(); Game.generateObstacles();
         if (this.isBossWave) { this.enemiesRemainingToSpawn = 1; createDamageText(Game.player.x, Game.player.y - 100, "BOSS BATTLE!", "#D50000"); document.getElementById('bossHealthContainer').style.display = 'block'; } 
-        else { const count = (this.scaling ? this.scaling.spawnCount : (3 + Math.floor(this.wave * 1.5))); this.enemiesRemainingToSpawn = count; document.getElementById('bossHealthContainer').style.display = 'none'; }
+        else {
+            let count = (this.scaling ? this.scaling.spawnCount : (3 + Math.floor(this.wave * 1.5)));
+
+            // STEP10: 2P -> spawn gấp đôi mỗi wave (không áp dụng cho boss wave)
+            if (Game && Game.settings && Game.settings.playerCount === 2) count *= 2;
+
+            this.enemiesRemainingToSpawn = count;
+            document.getElementById('bossHealthContainer').style.display = 'none';
+        }
         Game.ui.updateWave(this.wave);
     },
     update() {
@@ -55,8 +63,27 @@ export const WaveManager = {
             this.wave++;
             try { if (Game.player) createDamageText(Game.player.x, Game.player.y - 50, "WAVE COMPLETE!", "#FFD700"); } catch(e){}
             Shop.show(this.wave, Game.gold, () => {
+                // STEP 3.4: Revive dead player(s) when advancing to the next wave.
+                // - Do NOT recreate players (keep inventory/upgrades)
+                // - Revive dead: hp = max(1, floor(maxHp * 0.6))
+                // - Heal alive as before (+50)
+                const players = (Game && Game.players && Game.players.length)
+                    ? Game.players
+                    : (Game && Game.player ? [Game.player] : []);
+
+                for (const p of players) {
+                    if (!p) continue;
+                    if ((p.hp ?? 0) <= 0) {
+                        p.hp = Math.max(1, Math.floor((p.maxHp || 1) * 0.6));
+                        // Sync HP HUD for the revived player (supports 2P HUD split).
+                        Game.ui?.updateHealth?.(p.hp, p.maxHp, p.playerIndex || 1);
+                    } else {
+                        // Keep original behavior: heal living players by 50.
+                        if (typeof p.heal === 'function') p.heal(50);
+                    }
+                }
+
                 this.startWave();
-                if (Game.player) Game.player.heal(50);
             });
         }
     },

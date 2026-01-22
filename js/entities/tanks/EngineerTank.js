@@ -76,7 +76,7 @@ export class EngineerTank extends PlayerBase {
       if (typeof this.heal === 'function') this.heal(healAmt);
       else {
         this.hp = Math.min(this.maxHp, this.hp + healAmt);
-        Game.ui.updateHealth(this.hp, this.maxHp);
+        Game.ui.updateHealth(this.hp, this.maxHp, this.playerIndex || 1);
       }
       createDamageText(this.x, this.y - 40, 'REPAIR!', config.color || '#A5D6A7');
       createComplexExplosion(this.x, this.y, '#4CAF50', 10);

@@ -22,11 +22,14 @@
                 const raw = localStorage.getItem(SAVE_KEY);
                 if (!raw) return structuredClone(defaultSave);
                 const data = JSON.parse(raw);
-                return {
+                const out = {
                     ...structuredClone(defaultSave),
                     ...data,
                     settings: { ...structuredClone(defaultSave.settings), ...(data.settings || {}) }
                 };
+                // Minimap is always ON (M key reserved for skill R in Easy/2P)
+                out.settings.minimap = true;
+                return out;
             } catch (e) {
                 console.warn("Save load failed:", e);
                 return structuredClone(defaultSave);
@@ -123,7 +126,7 @@
             if (cap) cap.value = s.fpsCap;
             if (capVal) capVal.textContent = String(s.fpsCap);
             if (sh) sh.checked = !!s.shake;
-            if (mm) mm.checked = !!s.minimap;
+            if (mm) { mm.checked = true; mm.disabled = true; }
             if (fp) fp.checked = !!s.fps;
             if (as) as.checked = !!s.autoSave;
         }
@@ -172,12 +175,14 @@ if (sh) sh.addEventListener("change", () => {
                 State.save.settings.shake = !!sh.checked;
                 State.syncSettingsUI();
                 if (State.save.settings.autoSave) Storage.save(State.save);
-            });
-            if (mm) mm.addEventListener("change", () => {
-                State.save.settings.minimap = !!mm.checked;
+            });            if (mm) {
+                // Minimap always ON (disabled toggle to avoid conflict with key M)
+                State.save.settings.minimap = true;
+                mm.checked = true;
+                mm.disabled = true;
                 State.syncSettingsUI();
                 if (State.save.settings.autoSave) Storage.save(State.save);
-            });
+            }
             if (fp) fp.addEventListener("change", () => {
                 State.save.settings.fps = !!fp.checked;
                 State.applySettings();
@@ -200,9 +205,7 @@ if (sh) sh.addEventListener("change", () => {
                     if (modal && !modal.classList.contains("hidden")) close(); else open();
                 }
                 const k = e.key.toLowerCase();
-                if (k === "p") Toggle.pause();
-                if (k === "m") { State.save.settings.minimap = !State.save.settings.minimap; State.syncSettingsUI(); if (State.save.settings.autoSave) Storage.save(State.save); }
-                if (k === "f") { State.save.settings.fps = !State.save.settings.fps; State.applySettings(); State.syncSettingsUI(); if (State.save.settings.autoSave) Storage.save(State.save); }
+                if (k === "p") Toggle.pause();                if (k === "f") { State.save.settings.fps = !State.save.settings.fps; State.applySettings(); State.syncSettingsUI(); if (State.save.settings.autoSave) Storage.save(State.save); }
             });
 
             // Show best on start screen too

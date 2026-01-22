@@ -27,7 +27,7 @@ import {
 } from './utils.js';
 
 import { setPlayerContext } from './entities/Player.js';
-import { createPlayerBySystem } from './entities/tanks/index.js';
+import { createPlayerBySystem, createPlayersBySystem, createPlayersBySystems } from './entities/tanks/index.js';
 import { setEnemyContext } from './entities/Enemy.js';
 import { setBulletContext } from './entities/Bullet.js';
 import { setTurretContext } from './entities/Turret.js';
@@ -43,6 +43,28 @@ import { UIManager } from './managers/UIManager.js';
 export const canvas = document.getElementById('gameCanvas');
 if (!canvas) throw new Error('Missing <canvas id="gameCanvas"> in index.html');
 export const ctx = canvas.getContext('2d');
+
+
+// --- Settings (STEP 1): difficulty + playerCount ---
+const SETTINGS_STORAGE_KEY = 'tb_settings';
+const DEFAULT_SETTINGS = { difficulty: 'hard', playerCount: 1 };
+
+const normalizeSettings = (s) => {
+  const difficulty = (s && (s.difficulty === 'easy' || s.difficulty === 'hard')) ? s.difficulty : DEFAULT_SETTINGS.difficulty;
+  const pc = (s && (s.playerCount === 2 || s.playerCount === '2')) ? 2 : 1;
+
+  // STEP 5.2+: per-player tank system selection
+  const systemP1 = (s && typeof s.systemP1 === 'string' && s.systemP1) ? s.systemP1 : undefined;
+  const systemP2 = (s && typeof s.systemP2 === 'string' && s.systemP2) ? s.systemP2 : undefined;
+
+  return { difficulty, playerCount: pc, systemP1, systemP2 };
+};
+
+let _savedSettings = { ...DEFAULT_SETTINGS };
+try {
+  const raw = localStorage.getItem(SETTINGS_STORAGE_KEY);
+  if (raw) _savedSettings = normalizeSettings(JSON.parse(raw));
+} catch (e) {}
 
 // Keep original globals (some refactored modules still read these as globals).
 export let WORLD_WIDTH = CONST_WORLD_WIDTH;
@@ -77,8 +99,13 @@ export const Game = {
   paused: false,
   endlessMode: false,
 
+  // Settings
+  settings: { ..._savedSettings },
+
   // Runtime
-  player: null,
+  players: [],
+  player: null, // legacy alias (Player1)
+  _p2HpEl: null,
   enemies: [],
   clones: [],
   turrets: [],
@@ -102,11 +129,21 @@ export const Game = {
   // UI
   ui: null,
 
+
+
+    setSettings(next) {
+    // Merge to avoid losing optional fields like systemP1/systemP2 when only updating difficulty/playerCount.
+    const merged = { ...(this.settings || {}), ...(next || {}) };
+    const s = normalizeSettings(merged || DEFAULT_SETTINGS);
+    this.settings = { ...s };
+    try { localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(this.settings)); } catch (e) {}
+  },
   ensureUI() {
     if (!this.ui) this.ui = new UIManager();
   },
 
-  init() {
+  init(settings = null) {
+    if (settings) this.setSettings(settings);
     // Keep original world sizing behavior
     WORLD_WIDTH = canvas.width * 3;
     WORLD_HEIGHT = canvas.height * 3;
@@ -115,7 +152,27 @@ export const Game = {
 
     this.ensureUI();
 
-    this.player = createPlayerBySystem(this.selectedSystemId);
+    // STEP 6: Co-op foundation
+    // - Use players[] for update/draw
+    // - Keep player alias for existing logic (Hard mode unchanged)
+    const sysP1 = (this.settings && this.settings.systemP1) ? this.settings.systemP1 : (this.selectedSystemId || 'default');
+    const sysP2 = (this.settings && this.settings.systemP2) ? this.settings.systemP2 : sysP1;
+    this.players = createPlayersBySystems(sysP1, sysP2, this.settings?.playerCount || 1);
+    // Keep legacy selection id for existing UI/logic that still reads selectedSystemId
+    this.selectedSystemId = sysP1;
+    this.player = this.players[0] || null;
+
+    // Fix (STEP 3.5/3.6): ensure stable playerIndex so per-player HUD updates correctly.
+    if (this.players && this.players.length) {
+      if (this.players[0]) this.players[0].playerIndex = 1;
+      if (this.players[1]) this.players[1].playerIndex = 2;
+    }
+    if (this.players[1]) {
+      // Spawn P2 slightly offset so both tanks are visible.
+      this.players[1].x += 60;
+      this.players[1].y += 0;
+      if (typeof this.players[1].validatePosition === 'function') this.players[1].validatePosition();
+    }
     this.enemies = [];
     this.clones = [];
     this.turrets = [];
@@ -141,15 +198,60 @@ export const Game = {
     // UI sync (kept close to original)
     this.ui.updateScore(0);
     this.ui.updateGold(0);
-    this.ui.updateHealth(100, 100);
+    // Sync HP UI for both players immediately (2P)
+    if (this.ui && this.players && this.players[0]) {
+      this.ui.updateHealth(this.players[0].hp, this.players[0].maxHp, 1);
+    }
+    if (this.ui && this.players && this.players[1]) {
+      this.ui.updateHealth(this.players[1].hp, this.players[1].maxHp, 2);
+    }
     this.ui.updateUltiBar(0);
-    this.ui.updateWeaponInventory(this.player.inventory, this.player.currentWeaponIndex);
-    this.ui.updateTankSystemUI(this.selectedSystemId);
+    // STEP 2.2 init sync: ensure both weapon bars are populated on game start (2P)
+    if (this.players && this.players[0]) {
+      this.ui.updateWeaponInventory(this.players[0].inventory, this.players[0].currentWeaponIndex, 1);
+    }
+    if (this.players && this.players[1]) {
+      this.ui.updateWeaponInventory(this.players[1].inventory, this.players[1].currentWeaponIndex, 2);
+    }
+    // STEP 5: per-player system UI
+    this.ui.updateTankSystemUI(sysP1, 1);
+    if ((this.settings?.playerCount || 1) === 2) this.ui.updateTankSystemUI(sysP2, 2);
     if (this.ui.buffs) this.ui.buffs.innerHTML = '';
 
     Admin.init();
     Input.init();
     requestAnimationFrame(loop);
+  },
+
+  _ensureP2HpUI() {
+    if (this._p2HpEl) return;
+    const host = document.getElementById('hud-top-left');
+    if (!host) return;
+    let el = document.getElementById('p2HpText');
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'p2HpText';
+      el.className = 'hud-text';
+      el.style.fontSize = '0.9rem';
+      el.style.color = '#8BC34A';
+      el.style.marginTop = '4px';
+      host.appendChild(el);
+    }
+    this._p2HpEl = el;
+  },
+
+  _updateP2HpUI() {
+    if (!this.players || this.players.length < 2) {
+      if (this._p2HpEl) this._p2HpEl.style.display = 'none';
+      return;
+    }
+    this._ensureP2HpUI();
+    if (!this._p2HpEl) return;
+    this._p2HpEl.style.display = '';
+    const p2 = this.players[1];
+    const hp = Math.max(0, Math.ceil(p2?.hp ?? 0));
+    const max = Math.max(1, Math.ceil(p2?.maxHp ?? 1));
+    this._p2HpEl.textContent = `P2 HP: ${hp}/${max}`;
   },
 
   generateObstacles() {
@@ -161,7 +263,16 @@ export const Game = {
       const y = Math.random() * (WORLD_HEIGHT - h);
       const distToCenter = Math.hypot(x - WORLD_WIDTH / 2, y - WORLD_HEIGHT / 2);
       if (distToCenter < 400) continue;
-      if (Game.player && checkCircleRect({ x: Game.player.x, y: Game.player.y, radius: 150 }, { x, y, width: w, height: h })) continue;
+      // Avoid spawning obstacles on top of players (P1/P2)
+      const ps = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
+      let blocked = false;
+      for (const p of ps) {
+        if (p && checkCircleRect({ x: p.x, y: p.y, radius: 150 }, { x, y, width: w, height: h })) {
+          blocked = true;
+          break;
+        }
+      }
+      if (blocked) continue;
       this.obstacles.push(new Obstacle(x, y, w, h));
     }
   },
@@ -254,13 +365,45 @@ export function loop() {
 
   try {
     // --- SELF-HEALING CHECK ---
-    if (!Game.player || typeof Game.player.takeDamage !== 'function') {
-      console.warn('Player integrity lost. Respawning...');
-      Game.player = createPlayerBySystem(Game.selectedSystemId || 'default');
+    // STEP 6: ensure players[] exists; keep legacy Game.player alias = players[0]
+    // STEP 5.x: In 2P, P1 and P2 may have different tank systems.
+    // Use settings.systemP1/systemP2 when available; fall back to legacy selectedSystemId.
+    const sysP1 = (Game.settings && Game.settings.systemP1) ? Game.settings.systemP1 : (Game.selectedSystemId || 'default');
+    const sysP2 = (Game.settings && Game.settings.systemP2) ? Game.settings.systemP2 : (Game.selectedSystemIdP2 || sysP1);
+
+    if (!Array.isArray(Game.players) || Game.players.length === 0) {
+      Game.players = createPlayersBySystems(sysP1, sysP2, Game.settings?.playerCount || 1);
+      Game.player = Game.players[0] || null;
+    }
+    if (!Game.players[0] || typeof Game.players[0].takeDamage !== 'function') {
+      console.warn('Player integrity lost. Respawning P1...');
+      Game.players[0] = createPlayerBySystem(sysP1);
+      Game.player = Game.players[0];
+    }
+    // Respawn P2 only if we are in 2P mode
+    const want2P = (Number(Game.settings?.playerCount || 1) === 2);
+    if (want2P) {
+      if (!Game.players[1] || typeof Game.players[1].takeDamage !== 'function') {
+        console.warn('Player2 integrity lost. Respawning P2...');
+        Game.players[1] = createPlayerBySystem(sysP2);
+        Game.players[1].x += 60;
+        if (typeof Game.players[1].validatePosition === 'function') Game.players[1].validatePosition();
+      }
+      // clamp array to 2 players
+      Game.players.length = 2;
+    } else {
+      // clamp array to 1 player
+      Game.players.length = 1;
+    }
+
+    // Keep per-player HUD stable even after self-heal respawns.
+    if (Game.players && Game.players.length) {
+      if (Game.players[0]) Game.players[0].playerIndex = 1;
+      if (want2P && Game.players[1]) Game.players[1].playerIndex = 2;
     }
 
     WaveManager.update();
-    if (Game.player) Camera.update(Game.player);
+    if (Game.players[0]) Camera.update(Game.players[0]);
     if (canvas.width > 0 && canvas.height > 0) {
       ctx.fillStyle = '#121212';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -300,15 +443,28 @@ export function loop() {
 
     Game.obstacles.forEach((obs) => obs.draw(ctx));
 
-    if (Game.player) {
-      Game.player.update(Input, Game.obstacles, Game.enemies, Game.projectiles, Game.clones, Game.turrets, Game.pickups, Game.coins, Game.bossMines, Game);
-      Game.player.draw(ctx);
-      // Optional overlay VFX for tank systems.
-      // This avoids relying solely on draw() override dispatch (some builds bind draw on instance).
-      if (typeof Game.player.drawFx === 'function') {
-        Game.player.drawFx(ctx);
+    // STEP 6: update/draw all players (P1/P2)
+    if (Game.players && Game.players.length) {
+      for (let i = 0; i < Game.players.length; i++) {
+        const p = Game.players[i];
+        if (!p) continue;
+        // STEP 7: provide per-player input context (P1 vs P2 key mapping)
+        if (Input && typeof Input.setActivePlayer === 'function') Input.setActivePlayer(i + 1);
+
+        // STEP 3.3 hard guarantee: when a player is downed (hp <= 0), they must not
+        // move, shoot, or use skills — even if a subclass overrides update().
+        if (p.hp > 0) {
+          p.update(Input, Game.obstacles, Game.enemies, Game.projectiles, Game.clones, Game.turrets, Game.pickups, Game.coins, Game.bossMines, Game);
+        }
+        p.draw(ctx);
+        if (typeof p.drawFx === 'function') p.drawFx(ctx);
       }
+      if (Input && typeof Input.setActivePlayer === 'function') Input.setActivePlayer(1);
     }
+    Game._updateP2HpUI?.();
+
+    // Co-op: treat collisions/pickups/bullet hits for every active player (P1/P2)
+    const livePlayers = (Game.players && Game.players.length) ? Game.players.filter(Boolean) : (Game.player ? [Game.player] : []);
 
     Game.clones.forEach((c) => {
       c.update(Game.enemies, Game.obstacles, Game.projectiles);
@@ -325,15 +481,23 @@ export function loop() {
       Game.turrets = Game.turrets.filter((t) => !t.markedForDeletion);
     }
 
-    Game.pickups.forEach((p) => {
-      p.update();
-      p.draw(ctx);
-      if (Game.player && checkCollision(Game.player, p)) {
-        if (p.config.type === 'HEAL') Game.player.heal(p.config.value);
-        else if (p.config.type === 'BUFF') Game.player.addBuff(p.config.buffType, p.config.duration);
-        else if (p.config.type === 'WEAPON') Game.player.addWeapon(p.config.weaponId);
-        createDamageText(Game.player.x, Game.player.y - 30, p.config.label, p.config.color);
-        p.markedForDeletion = true;
+    Game.pickups.forEach((pu) => {
+      pu.update();
+      pu.draw(ctx);
+
+      if (pu.markedForDeletion) return;
+      if (!livePlayers || livePlayers.length === 0) return;
+
+      for (const pl of livePlayers) {
+        if (!pl) continue;
+        if (checkCollision(pl, pu)) {
+          if (pu.config.type === 'HEAL') pl.heal(pu.config.value);
+          else if (pu.config.type === 'BUFF') pl.addBuff(pu.config.buffType, pu.config.duration);
+          else if (pu.config.type === 'WEAPON') pl.addWeapon(pu.config.weaponId);
+          createDamageText(pl.x, pl.y - 30, pu.config.label, pu.config.color);
+          pu.markedForDeletion = true;
+          break;
+        }
       }
     });
 
@@ -342,13 +506,26 @@ export function loop() {
       c.update();
       c.draw(ctx);
 
-      if (!Game.player) return;
+      if (!livePlayers || livePlayers.length === 0) return;
 
-      const dx = Game.player.x - c.x;
-      const dy = Game.player.y - c.y;
+      // In 2P: coin will be attracted to the nearest player (avoid applying magnet twice)
+      let target = null;
+      let best = Infinity;
+      for (const pl of livePlayers) {
+        if (!pl) continue;
+        const d = Math.hypot(pl.x - c.x, pl.y - c.y);
+        if (d < best) {
+          best = d;
+          target = pl;
+        }
+      }
+      if (!target) return;
+
+      const dx = target.x - c.x;
+      const dy = target.y - c.y;
       const dist = Math.hypot(dx, dy) || 0.0001;
 
-      const pr = Game.player.radius || 20;
+      const pr = target.radius || 20;
       const cr = c.radius || 10;
 
       // Nam châm hút vàng: trong phạm vi +40px (ngoài va chạm), coin sẽ bay về phía player
@@ -378,7 +555,7 @@ export function loop() {
         if (dist < pickupRange) {
           Game.gold += c.value;
           Game.ui.updateGold(Game.gold);
-          createDamageText(Game.player.x, Game.player.y - 30, `+${c.value}`, '#FFD700');
+          createDamageText(target.x, target.y - 30, `+${c.value}`, '#FFD700');
           c.markedForDeletion = true;
         }
       }
@@ -408,9 +585,12 @@ export function loop() {
         if (nowM >= m.detonateAt) {
           createComplexExplosion(m.x, m.y, '#FF9800');
 
-          if (Game.player && typeof Game.player.takeDamage === 'function') {
-            const dP = Math.hypot(Game.player.x - m.x, Game.player.y - m.y);
-            if (dP <= m.radius + Game.player.radius) Game.player.takeDamage(m.damage);
+          if (livePlayers && livePlayers.length) {
+            for (const pl of livePlayers) {
+              if (!pl || typeof pl.takeDamage !== 'function') continue;
+              const dP = Math.hypot(pl.x - m.x, pl.y - m.y);
+              if (dP <= m.radius + (pl.radius || 0)) pl.takeDamage(m.damage);
+            }
           }
           if (Game.clones && Game.clones.length) {
             Game.clones.forEach((c) => {
@@ -430,13 +610,19 @@ export function loop() {
     });
 
     Game.enemies.forEach((e) => {
-      e.update(Game.player, Game.clones, Game.obstacles, Game.enemies, Game.projectiles, Game.bossMines, Game);
+      // STEP 11: pass all players so enemies can target the nearest one in co-op.
+      e.update(Game.players, Game.clones, Game.obstacles, Game.enemies, Game.projectiles, Game.bossMines, Game);
       e.draw(ctx);
-      if (Game.player && checkCollision(Game.player, e)) {
-        if (typeof Game.player.takeDamage === 'function') Game.player.takeDamage(e.contactDamage || 5, { enemy: e, type: 'CONTACT' });
-        const angle = Math.atan2(e.y - Game.player.y, e.x - Game.player.x);
-        e.x += Math.cos(angle) * 10;
-        e.y += Math.sin(angle) * 10;
+      if (livePlayers && livePlayers.length) {
+        for (const pl of livePlayers) {
+          if (!pl) continue;
+          if (checkCollision(pl, e)) {
+            if (typeof pl.takeDamage === 'function') pl.takeDamage(e.contactDamage || 5, { enemy: e, type: 'CONTACT' });
+            const angle = Math.atan2(e.y - pl.y, e.x - pl.x);
+            e.x += Math.cos(angle) * 10;
+            e.y += Math.sin(angle) * 10;
+          }
+        }
       }
       Game.clones.forEach((c) => {
         if (checkCollision(c, e)) {
@@ -466,10 +652,16 @@ export function loop() {
       if (wallHit) return;
 
       if (b.owner !== 'PLAYER') {
-        if (Game.player && checkCollision(b, Game.player)) {
-          if (typeof Game.player.takeDamage === 'function') Game.player.takeDamage(b.config.damage, { enemy: b.sourceEnemy || null, bullet: b, type: 'BULLET' });
-          b.markedForDeletion = true;
-          createComplexExplosion(b.x, b.y, '#E040FB');
+        if (livePlayers && livePlayers.length) {
+          for (const pl of livePlayers) {
+            if (!pl) continue;
+            if (checkCollision(b, pl)) {
+              if (typeof pl.takeDamage === 'function') pl.takeDamage(b.config.damage, { enemy: b.sourceEnemy || null, bullet: b, type: 'BULLET' });
+              b.markedForDeletion = true;
+              createComplexExplosion(b.x, b.y, '#E040FB');
+              return;
+            }
+          }
         }
         Game.clones.forEach((c) => {
           if (checkCollision(b, c)) {
@@ -595,7 +787,7 @@ export function loop() {
       ctx.globalAlpha = 1;
     });
 
-    if (typeof MAX !== 'undefined' && MAX.State.save.settings.minimap) drawMiniMap();
+    if (typeof MAX !== 'undefined') drawMiniMap();
     ctx.restore();
     Game.ui.updateEnemies(Game.enemies.length);
 
@@ -611,7 +803,12 @@ export function loop() {
         if (fpsVal && MAX.State.save.settings.fps) fpsVal.textContent = MAX.State.fps.value;
       }
     }
-    if (Game.player && Game.player.hp <= 0) Game.gameOver();
+    const playersList = Array.isArray(Game.players) ? Game.players.filter(Boolean) : [];
+    const allDead = playersList.length
+      ? playersList.every((p) => p.hp <= 0)
+      : (Game.player && Game.player.hp <= 0);
+
+    if (allDead) Game.gameOver();
   } catch (err) {
     console.error('Game Loop Error:', err);
   }

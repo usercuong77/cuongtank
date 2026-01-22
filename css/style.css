@@ -37,7 +37,10 @@ body {
         .highlight { color: #4CAF50; }
         .wave-text { color: #FFD700; font-size: 1.5rem; }
 
-        /* HUD: Góc phải trên - Buffs */
+        
+        /* Hide legacy P2 HP text in top-left (we have proper P2 HP bar now) */
+        #p2HpText{ display:none !important; }
+/* HUD: Góc phải trên - Buffs */
         #hud-top-right {
             position: absolute;
             top: 20px;
@@ -58,7 +61,65 @@ body {
             border: 1px solid white;
         }
 
-        /* WEAPON & SKILL BAR */
+        
+
+        /* HUD Bottom layout (2P split) */
+        #hudRoot {
+            position: fixed;
+            left: 50%;
+            bottom: 0;
+            transform: translateX(-50%);
+            width: min(1100px, 96vw);
+            height: 220px;
+            display: flex;
+            align-items: flex-end;
+            justify-content: space-between;
+            pointer-events: none;
+            z-index: 200;
+        }
+
+        #hudP1, #hudP2 {
+            width: 50%;
+            padding: 16px 24px;
+            box-sizing: border-box;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            pointer-events: none;
+        }
+
+        #hudP1 { align-items: flex-start; }
+        #hudP2 { align-items: flex-end; }
+
+        #hudDivider {
+            width: 2px;
+            height: 180px;
+            align-self: flex-end;
+            background: rgba(255,255,255,0.15);
+            border-radius: 2px;
+        }
+
+        /* Allow interaction on HUD elements */
+        #hudRoot .slot,
+        #hudRoot .weapon-slot,
+        #hudRoot button {
+            pointer-events: auto;
+        }
+
+        /* Bar rows */
+        #skillBar, #weaponBar {
+            display: flex;
+            gap: 10px;
+        }
+        #skillBarP2, #weaponBarP2 {
+            gap: 10px;
+            justify-content: flex-end;
+        }
+
+        /* Hide debug HUD text (move outside HUD if needed) */
+        #world-info { display: none; }
+
+/* WEAPON & SKILL BAR */
         #bottomBar {
             position: absolute;
             bottom: 30px;
@@ -76,23 +137,60 @@ body {
             gap: 10px;
         }
 
-        .slot {
-            width: 60px;
-            height: 60px;
-            background: rgba(0, 0, 0, 0.6);
-            border: 2px solid #555;
-            border-radius: 8px;
-            position: relative;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-            font-weight: bold;
-            color: #777;
-            transition: all 0.2s;
-            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        /* 2P: Skill bar for Player2 (shown when weaponBarP2 is visible) */
+        #skillBarP2 {
+            display: none;
+            gap: 10px;
         }
 
+        /* Base box for skill slots */
+        .slot{
+          width:60px;
+          height:60px;
+          border:2px solid #555;
+          border-radius:10px;
+          background:rgba(20,20,20,0.85);
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          position:relative;   /* IMPORTANT: contain cooldown overlay */
+          overflow:hidden;     /* IMPORTANT: clip overlay */
+          box-sizing:border-box;
+          text-align:center;
+        }
+
+        /* Base box for weapon slots (UIManager tạo class weapon-slot) */
+        .weapon-slot{
+          width:60px;
+          height:60px;
+          border:2px solid #555;
+          border-radius:10px;
+          background:rgba(20,20,20,0.85);
+          display:flex;
+          flex-direction:column;
+          align-items:center;
+          justify-content:center;
+          position:relative;
+          overflow:hidden;
+          box-sizing:border-box;
+          text-align:center;
+        }
+
+        /* Active style phải áp dụng cho cả weapon-slot */
+        .weapon-slot.active{
+          border-color:#fff;
+          transform:scale(1.1);
+          box-shadow:0 0 15px rgba(255,255,255,0.4);
+          background:rgba(60,60,60,0.9);
+        }
+
+        /* key/icon/level áp dụng cho weapon-slot */
+        .weapon-slot .key-number{ position:absolute; top:2px; left:4px; font-size:0.7rem; color:#aaa; }
+        .weapon-slot .icon{ font-size:0.9rem; line-height:1.1; }
+        .weapon-slot .level-indicator{ font-size:0.7rem; color:#FFD700; margin-top:2px; }
+
+        
         .slot.active {
             border-color: #fff;
             transform: scale(1.1);
@@ -191,8 +289,8 @@ body {
 /* HUD: Thanh máu */
         #healthBarContainer {
             position: relative;
-            width: 400px;
-            height: 20px;
+            width: 320px;
+            height: 18px;
             background: #222;
             border: 2px solid #555;
             border-radius: 4px;
@@ -263,8 +361,25 @@ body {
             display: flex;
             flex-direction: column;
             align-items: center;
-            min-width: 400px;
+            min-width: min(400px, 92vw);
+            /* Prevent tall start screen content from being clipped on small viewports */
+            max-height: 92vh;
+            overflow-y: auto;
+            overflow-x: hidden;
+            max-width: 92vw;
+            box-sizing: border-box;
             z-index: 100;
+        }
+
+        /* Optional: tighten spacing on shorter laptop screens */
+        @media (max-height: 820px) {
+            #startScreen, #gameOverScreen, #victoryScreen {
+                padding: 28px;
+            }
+            #startScreen h1, #victoryScreen h1 { font-size: 2.4rem; margin-bottom: 14px; }
+            #startScreen h2, #gameOverScreen h2, #victoryScreen h2 { font-size: 2.0rem; margin-bottom: 12px; }
+            #startScreen p, #gameOverScreen p, #victoryScreen p { font-size: 1.0rem; }
+            #startScreen .btn, #gameOverScreen .btn, #victoryScreen .btn { font-size: 1.25rem; margin-top: 20px; padding: 12px 32px; }
         }
 
         h1 { margin: 0 0 20px; font-size: 3rem; color: #4CAF50; text-transform: uppercase; letter-spacing: 3px; }

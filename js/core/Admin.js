@@ -75,6 +75,56 @@ export const Admin = {
                 return;
             }
 
+
+            // --- Jump to any wave: wave15, wave20... ---
+            const mWave = code.match(/^wave(\d+)$/);
+            if (mWave) {
+                const targetWave = Math.max(1, parseInt(mWave[1], 10) || 1);
+                const WM = globalThis.WaveManager;
+                if (!Game || !Game.player || !WM) {
+                    this.msg.textContent = 'Chưa vào game.';
+                    return;
+                }
+
+                // Close shop defensively (jump wave should resume gameplay)
+                try {
+                    const shop = document.getElementById('shopModal');
+                    if (shop) shop.classList.add('hidden');
+                    if (globalThis.Shop) globalThis.Shop.open = false;
+                } catch (e) {}
+
+                // Clear current combat objects to avoid leftover bullets/enemies
+                try {
+                    Game.enemies = [];
+                    Game.projectiles = [];
+                    Game.particles = [];
+                    Game.pickups = [];
+                    Game.coins = [];
+                    Game.texts = [];
+                    Game.clones = [];
+                    Game.turrets = [];
+                    Game.bossMines = [];
+                } catch (e) {}
+
+                // Reset wave state and start
+                WM.wave = targetWave;
+                WM.active = false;
+                WM.spawnTimer = 0;
+                WM.enemiesRemainingToSpawn = 0;
+                WM.isBossWave = false;
+                WM.bossSpawned = false;
+                WM.scaling = null;
+
+                try { createDamageText(Game.player.x, Game.player.y - 70, 'WAVE ' + targetWave, '#00E5FF'); } catch (e) {}
+
+                try { WM.startWave(); } catch (e) {}
+
+                this.msg.textContent = 'OK';
+                // Force resume after closing modal (even if it was opened while Shop paused the game)
+                this.prevPaused = false;
+                this.close();
+                return;
+            }
             this.msg.textContent = 'Sai code.';
         } catch (err) {
             this.msg.textContent = 'Lỗi.';

@@ -164,7 +164,10 @@ function dropBossWeapon(x, y) {
 }
 
 function drawMiniMap() {
-    const mapSize = MINIMAP_SIZE; const mapX = canvas.width - mapSize - 20; const mapY = canvas.height - mapSize - 20;
+    const mapSize = MINIMAP_SIZE;
+    const mapX = canvas.width - mapSize - 20;
+    const TOP_SAFE = 110;// leave room for buffs/top HUD
+    const mapY = TOP_SAFE;
     ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); 
     ctx.fillStyle = 'rgba(0, 0, 0, 0.5)'; ctx.fillRect(mapX, mapY, mapSize, mapSize);
     ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(mapX, mapY, mapSize, mapSize);

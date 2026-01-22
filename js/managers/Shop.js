@@ -6,6 +6,34 @@ import { createDamageText } from '../utils.js';
 let Game = null;
 export function setShopContext(game) { Game = game; }
 
+function forEachPlayer(cb) {
+    if (!Game) return;
+    const ps = (Array.isArray(Game.players) && Game.players.length)
+        ? Game.players
+        : (Game.player ? [Game.player] : []);
+    for (const p of ps) {
+        if (!p) continue;
+        cb(p);
+    }
+}
+
+function getPlayersSafe() {
+    if (!Game) return [];
+    if (Array.isArray(Game.players) && Game.players.length) return Game.players.filter(Boolean);
+    return Game.player ? [Game.player] : [];
+}
+
+function isAnyPlayerAlive() {
+    const ps = getPlayersSafe();
+    return ps.some(p => (p && (p.hp > 0)));
+}
+
+function getAnchorPlayer() {
+    const ps = getPlayersSafe();
+    // Prefer an alive player so damage texts show near the active survivor
+    return ps.find(p => p && p.hp > 0) || ps[0] || null;
+}
+
 export const Shop = {
     open: false,
     onContinue: null,
@@ -225,7 +253,7 @@ const hpCost = this.maxHpCostForLevel(hpLv);
         if (this.els.maxHpLevel) this.els.maxHpLevel.textContent = String(hpLv);
         if (this.els.maxHpCost) this.els.maxHpCost.textContent = String(hpCost);
         if (this.els.btnBuyMaxHp) {
-            const can = (Game.gold >= hpCost) && Game.player && Game.player.hp > 0;
+            const can = (Game.gold >= hpCost) && isAnyPlayerAlive();
             this.els.btnBuyMaxHp.disabled = !can;
             this.els.btnBuyMaxHp.style.opacity = can ? "1" : "0.55";
             this.els.btnBuyMaxHp.style.cursor = can ? "pointer" : "not-allowed";
@@ -237,7 +265,7 @@ const dmgCost = this.dmgCostForLevel(dmgLv);
         if (this.els.dmgLevel) this.els.dmgLevel.textContent = String(dmgLv);
         if (this.els.dmgCost) this.els.dmgCost.textContent = String(dmgCost);
         if (this.els.btnBuyDmg) {
-            const can = (Game.gold >= dmgCost) && Game.player && Game.player.hp > 0;
+            const can = (Game.gold >= dmgCost) && isAnyPlayerAlive();
             this.els.btnBuyDmg.disabled = !can;
             this.els.btnBuyDmg.style.opacity = can ? "1" : "0.55";
             this.els.btnBuyDmg.style.cursor = can ? "pointer" : "not-allowed";
@@ -252,7 +280,7 @@ if (Game.upgrades && (((Game.upgrades.fireRateLv ?? 0) | 0) > frMax)) { Game.upg
         if (this.els.fireRateLevel) this.els.fireRateLevel.textContent = String(frLv);
         if (this.els.fireRateCost) this.els.fireRateCost.textContent = String(frCost);
         if (this.els.btnBuyFireRate) {
-            const can = (!frCapped) && (Game.gold >= frCost) && Game.player && Game.player.hp > 0;
+            const can = (!frCapped) && (Game.gold >= frCost) && isAnyPlayerAlive();
             this.els.btnBuyFireRate.disabled = !can || frCapped;
             this.els.btnBuyFireRate.style.opacity = can ? "1" : "0.55";
             this.els.btnBuyFireRate.style.cursor = can ? "pointer" : "not-allowed";
@@ -266,7 +294,7 @@ if (Game.upgrades && (((Game.upgrades.fireRateLv ?? 0) | 0) > frMax)) { Game.upg
         if (this.els.speedLevel) this.els.speedLevel.textContent = sCapped ? "MAX" : String(sLv);
         if (this.els.speedCost) this.els.speedCost.textContent = sCapped ? "-" : String(sCost);
         if (this.els.btnBuySpeed) {
-            const can = (!sCapped) && (Game.gold >= sCost) && Game.player && Game.player.hp > 0;
+            const can = (!sCapped) && (Game.gold >= sCost) && isAnyPlayerAlive();
             this.els.btnBuySpeed.disabled = !can || sCapped;
             this.els.btnBuySpeed.style.opacity = can ? "1" : "0.55";
             this.els.btnBuySpeed.style.cursor = can ? "pointer" : "not-allowed";
@@ -278,7 +306,7 @@ const mCost = this.magnetCostForLevel(mLv);
         if (this.els.magnetLevel) this.els.magnetLevel.textContent = String(mLv);
         if (this.els.magnetCost) this.els.magnetCost.textContent = String(mCost);
         if (this.els.btnBuyMagnet) {
-            const can = (Game.gold >= mCost) && Game.player && Game.player.hp > 0;
+            const can = (Game.gold >= mCost) && isAnyPlayerAlive();
             this.els.btnBuyMagnet.disabled = !can;
             this.els.btnBuyMagnet.style.opacity = can ? "1" : "0.55";
             this.els.btnBuyMagnet.style.cursor = can ? "pointer" : "not-allowed";
@@ -291,7 +319,7 @@ const aCost = this.armorCostForLevel(aLv);
         if (this.els.armorLevel) this.els.armorLevel.textContent = String(aLv);
         if (this.els.armorCost) this.els.armorCost.textContent = String(aCost);
         if (this.els.btnBuyArmor) {
-            const can = (!armorCapped) && (Game.gold >= aCost) && Game.player && Game.player.hp > 0;
+            const can = (!armorCapped) && (Game.gold >= aCost) && isAnyPlayerAlive();
             this.els.btnBuyArmor.disabled = !can || armorCapped;
             this.els.btnBuyArmor.style.opacity = can ? "1" : "0.55";
             this.els.btnBuyArmor.style.cursor = can ? "pointer" : "not-allowed";
@@ -299,13 +327,14 @@ const aCost = this.armorCostForLevel(aLv);
     },
     buyMaxHp() {
         if (!this.open) return;
-        if (!Game.player) return;
+        const anchor = getAnchorPlayer();
+        if (!anchor) return;
 
         const lv = ((Game.upgrades?.maxHpLv ?? 0) | 0);
 const cost = this.maxHpCostForLevel(lv);
 
         if (Game.gold < cost) {
-            createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "NOT ENOUGH GOLD", "#FFD700");
             return;
         }
 
@@ -315,11 +344,19 @@ const cost = this.maxHpCostForLevel(lv);
 
         // Apply
         Game.upgrades.maxHpLv = lv + 1;
-        Game.player.maxHp += 20;
-        Game.player.hp = Math.min(Game.player.hp + 20, Game.player.maxHp);
-        Game.ui.updateHealth(Game.player.hp, Game.player.maxHp);
+        forEachPlayer((p) => {
+            p.maxHp += 20;
+            // Step 1.2: don't revive a dead player inside shop
+            if (p.hp > 0) p.hp = Math.min(p.hp + 20, p.maxHp);
+        });
+        if (Game.ui && typeof Game.ui.updateHealth === 'function') {
+            forEachPlayer((p) => {
+                if (!p) return;
+                Game.ui.updateHealth(p.hp, p.maxHp, p.playerIndex || 1);
+            });
+        }
 
-        createDamageText(Game.player.x, Game.player.y - 45, "MAX HP +20", "#FFD700");
+        createDamageText(anchor.x, anchor.y - 45, "MAX HP +20", "#FFD700");
 
         
         try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){};
@@ -328,13 +365,14 @@ const cost = this.maxHpCostForLevel(lv);
     },
     buyDmg() {
         if (!this.open) return;
-        if (!Game.player) return;
+        const anchor = getAnchorPlayer();
+        if (!anchor) return;
 
         const lv = ((Game.upgrades?.dmgLv ?? 0) | 0);
 const cost = this.dmgCostForLevel(lv);
 
         if (Game.gold < cost) {
-            createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "NOT ENOUGH GOLD", "#FFD700");
             return;
         }
 
@@ -345,22 +383,23 @@ const cost = this.dmgCostForLevel(lv);
         // Apply
         Game.upgrades.dmgLv = lv + 1;
 
-        createDamageText(Game.player.x, Game.player.y - 45, "DMG +10%", "#FFD700");
+        createDamageText(anchor.x, anchor.y - 45, "DMG +10%", "#FFD700");
         try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
 
         this.refresh();
     },
     buyFireRate() {
         if (!this.open) return;
-        if (!Game.player) return;
+        const anchor = getAnchorPlayer();
+        if (!anchor) return;
 
         const lv = ((Game.upgrades?.fireRateLv ?? 0) | 0);
 const frMax = getFireRateMaxLv();
-        if (lv >= frMax) { createDamageText(Game.player.x, Game.player.y - 45, 'CD MAX', '#FFD700'); return; }
+        if (lv >= frMax) { createDamageText(anchor.x, anchor.y - 45, 'CD MAX', '#FFD700'); return; }
 const cost = this.fireRateCostForLevel(lv);
 
         if (Game.gold < cost) {
-            createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "NOT ENOUGH GOLD", "#FFD700");
             return;
         }
 
@@ -371,24 +410,25 @@ const cost = this.fireRateCostForLevel(lv);
         // Apply
         Game.upgrades.fireRateLv = lv + 1;
 
-        createDamageText(Game.player.x, Game.player.y - 45, "CD -5%", "#FFD700");
+        createDamageText(anchor.x, anchor.y - 45, "CD -5%", "#FFD700");
         try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
 
         this.refresh();
     },
     buySpeed() {
         if (!this.open) return;
-        if (!Game.player) return;
+        const anchor = getAnchorPlayer();
+        if (!anchor) return;
 
         const lv = (Game.upgrades ? ((Game.upgrades.speedLv ?? 0)|0) : 0);
         if (lv >= 12) {
-            createDamageText(Game.player.x, Game.player.y - 45, "MAX", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "MAX", "#FFD700");
             return;
         }
         const cost = this.speedCostForLevel(lv);
 
         if (Game.gold < cost) {
-            createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "NOT ENOUGH GOLD", "#FFD700");
             return;
         }
 
@@ -397,7 +437,7 @@ const cost = this.fireRateCostForLevel(lv);
 
         Game.upgrades.speedLv = lv + 1;
 
-        createDamageText(Game.player.x, Game.player.y - 45, "SPEED +5%", "#FFD700");
+        createDamageText(anchor.x, anchor.y - 45, "SPEED +5%", "#FFD700");
         try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
         this.refresh();
     },
@@ -405,12 +445,13 @@ const cost = this.fireRateCostForLevel(lv);
 
     buyMagnet() {
         if (!this.open) return;
-        if (!Game.player) return;
+        const anchor = getAnchorPlayer();
+        if (!anchor) return;
 
         const lv = ((Game.upgrades?.magnetLv ?? 0) | 0);
 const cost = this.magnetCostForLevel(lv);
         if (Game.gold < cost) {
-            createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "NOT ENOUGH GOLD", "#FFD700");
             return;
         }
 
@@ -419,20 +460,21 @@ const cost = this.magnetCostForLevel(lv);
 
         Game.upgrades.magnetLv = lv + 1;
 
-        createDamageText(Game.player.x, Game.player.y - 45, "MAGNET +30px", "#FFD700");
+        createDamageText(anchor.x, anchor.y - 45, "MAGNET +30px", "#FFD700");
         try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
         this.refresh();
     },
 
     buyArmor() {
         if (!this.open) return;
-        if (!Game.player) return;
+        const anchor = getAnchorPlayer();
+        if (!anchor) return;
 
         const lv = ((Game.upgrades?.armorLv ?? 0) | 0);
-if (lv >= 12) { createDamageText(Game.player.x, Game.player.y - 45, 'ARMOR MAX', '#FFD700'); return; }
+if (lv >= 12) { createDamageText(anchor.x, anchor.y - 45, 'ARMOR MAX', '#FFD700'); return; }
 const cost = this.armorCostForLevel(lv);
         if (Game.gold < cost) {
-            createDamageText(Game.player.x, Game.player.y - 45, "NOT ENOUGH GOLD", "#FFD700");
+            createDamageText(anchor.x, anchor.y - 45, "NOT ENOUGH GOLD", "#FFD700");
             return;
         }
 
@@ -441,7 +483,7 @@ const cost = this.armorCostForLevel(lv);
 
         Game.upgrades.armorLv = lv + 1;
 
-        createDamageText(Game.player.x, Game.player.y - 45, "ARMOR -5%", "#FFD700");
+        createDamageText(anchor.x, anchor.y - 45, "ARMOR -5%", "#FFD700");
         try { if (typeof MAX !== 'undefined' && MAX.Audio && MAX.Audio.ting) MAX.Audio.ting(); } catch(e){}
         this.refresh();
     },

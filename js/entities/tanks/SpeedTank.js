@@ -1,7 +1,7 @@
 // Speed tank system (Hệ Tốc Độ)
 // Extracted from original Player logic. Keeps gameplay identical.
 
-import { PlayerBase, getPlayerContext } from '../Player.js';
+import { PlayerBase, getPlayerContext, setPlayerContext } from '../Player.js';
 import { WORLD_WIDTH, WORLD_HEIGHT, getSystemSkillDef } from '../../constants.js';
 import { checkCircleRect, createDamageText } from '../../utils.js';
 
@@ -84,29 +84,40 @@ export class SpeedTank extends PlayerBase {
   }
 
   // Override update: dash physics (and keep all original update wiring)
-  update(input, obstacles, enemies, projectiles, clones, turrets, pickups, coins, bossMines, game) {
+
+  // Override update: dash physics (kept) + defer aim/auto-shoot/ammo-cycle to PlayerBase via super.update()
+  update(input, obstacles, enemies, projectiles, pickups) {
+    // Ensure skills can read current input (used in useSkill())
+    if (input) {
+      // SpeedTank.useSkill reads Input via getPlayerContext()
+      // so keep the module-scope input synced.
+      // (No circular deps: uses Player module context.)
+      //
+      // NOTE: Game is injected elsewhere by the game loop.
+      //
+      // eslint-disable-next-line no-undef
+    }
+
+    // Sync context input for useSkill()
+    // (Importing setPlayerContext avoids relying on stale Input.)
+    //
+    // We only set Input here; Game is already injected by the game loop.
+    //
+    // eslint-disable-next-line no-undef
+    
+    // setPlayerContext may not exist in older builds; guard for safety.
+    try {
+      if (input && typeof setPlayerContext === 'function') setPlayerContext({ Input: input });
+    } catch (e) {
+      // ignore
+    }
+
     const ctx = getPlayerContext();
-    let { Game, Input } = ctx;
+    const Game = ctx.Game;
+    const Input = input || ctx.Input;
+    if (!Input) return;
 
-    // Keep original injection behavior (used by other modules)
-    if (game) Game = game;
-    if (input) Input = input;
-    if (enemies) Game.enemies = enemies;
-    if (projectiles) Game.projectiles = projectiles;
-    if (clones) Game.clones = clones;
-    if (turrets) Game.turrets = turrets;
-    if (pickups) Game.pickups = pickups;
-    if (coins) Game.coins = coins;
-    if (bossMines) Game.bossMines = bossMines;
-    if (obstacles) Game.obstacles = obstacles;
-
-    if (Input.keys['1']) this.selectWeapon(0);
-    if (Input.keys['2']) this.selectWeapon(1);
-    if (Input.keys['3']) this.selectWeapon(2);
-    if (Input.keys['4']) this.selectWeapon(3);
-    if (Input.keys['5']) this.selectWeapon(4);
-    if (Input.keys['6']) this.selectWeapon(5);
-
+    // Trigger skills/ultimate using core-mapped keys (q/e/r/space)
     if (Input.keys['q']) this.useSkill('clone');
     if (Input.keys['e']) this.useSkill('stealth');
     if (Input.keys['r']) this.useSkill('vampirism');
@@ -131,20 +142,18 @@ export class SpeedTank extends PlayerBase {
 
     // Effective speed (Adrenaline + shop upgrades)
     let effSpeed = (this.baseSpeed || this.speed || 6.5);
-    // Shop upgrade: Động Cơ (Lv 0 = chưa mua, mỗi cấp +5%)
     const spdLv = ((Game?.upgrades?.speedLv ?? 0) | 0);
     if (spdLv > 0) effSpeed *= (1 + spdLv * 0.05);
-
     if (this.buffs.adrenaline && this.buffs.adrenaline.active) {
       effSpeed *= (this.buffs.adrenaline.speedMult || 1.25);
     }
+    this.speed = effSpeed;
 
     // Movement (Dash overrides)
-    // IMPORTANT: normalize diagonal movement so speed is consistent (no sqrt(2) boost).
     let dx = 0;
     let dy = 0;
-
-    if (this.dash && this.dash.active && now <= this.dash.endTime) {
+    const dashActive = (this.dash && this.dash.active && now <= this.dash.endTime);
+    if (dashActive) {
       dx = this.dash.vx;
       dy = this.dash.vy;
     } else {
@@ -164,12 +173,14 @@ export class SpeedTank extends PlayerBase {
       }
     }
 
+    const obsList = obstacles || Game?.obstacles || [];
+
     const nextX = this.x + dx;
     const nextY = this.y + dy;
 
     if (nextX > this.radius && nextX < WORLD_WIDTH - this.radius) {
       let collides = false;
-      for (const obs of Game.obstacles) {
+      for (const obs of obsList) {
         if (checkCircleRect({ x: nextX, y: this.y, radius: this.radius }, obs)) {
           collides = true;
           break;
@@ -181,7 +192,7 @@ export class SpeedTank extends PlayerBase {
 
     if (nextY > this.radius && nextY < WORLD_HEIGHT - this.radius) {
       let collides = false;
-      for (const obs of Game.obstacles) {
+      for (const obs of obsList) {
         if (checkCircleRect({ x: this.x, y: nextY, radius: this.radius }, obs)) {
           collides = true;
           break;
@@ -190,43 +201,43 @@ export class SpeedTank extends PlayerBase {
       if (!collides) this.y = nextY;
       else if (this.dash) this.dash.active = false;
     }
+    // Run core logic (aim mode, auto-shoot, ammo cycle, UI cooldown)
+    // without core movement + without double skill triggers.
+    const keyObj = Input.keys;
+    const keysToOverride = ['w', 'a', 's', 'd', 'q', 'e', 'r', ' '];
+    const hadOwn = {};
+    const prevVal = {};
 
-    // Aim
-    const worldMouseX = Input.mouse.x + Camera.x;
-    const worldMouseY = Input.mouse.y + Camera.y;
-    this.angle = Math.atan2(worldMouseY - this.y, worldMouseX - this.x);
-
-    // Expire item buffs
-    if (this.buffs.shield.active && now > this.buffs.shield.endTime) {
-      this.buffs.shield.active = false;
-      const overlay = document.getElementById('shieldOverlay');
-      if (overlay) overlay.style.display = 'none';
-      if (Game && Game.ui) Game.ui.removeBuff('Shield');
-    }
-    if (this.buffs.rapid.active && now > this.buffs.rapid.endTime) {
-      this.buffs.rapid.active = false;
-      if (Game && Game.ui) Game.ui.removeBuff('Rapid');
+    if (keyObj && typeof keyObj === 'object') {
+      for (const k of keysToOverride) {
+        hadOwn[k] = Object.prototype.hasOwnProperty.call(keyObj, k);
+        prevVal[k] = keyObj[k];
+        keyObj[k] = false;
+      }
     }
 
-    if (Input.mouse.down) this.shoot(obstacles);
-
-    if (Game && Game.ui) {
-      Game.ui.updateSkillCooldown('clone', this.skills.clone.lastUsed, getSystemSkillDef(this.systemId, 'clone').cooldown);
-      Game.ui.updateSkillCooldown('stealth', this.skills.stealth.lastUsed, getSystemSkillDef(this.systemId, 'stealth').cooldown);
-      Game.ui.updateSkillCooldown('vampirism', this.skills.vampirism.lastUsed, getSystemSkillDef(this.systemId, 'vampirism').cooldown);
+    try {
+      super.update.apply(this, arguments);
+    } finally {
+      if (keyObj && typeof keyObj === 'object') {
+        for (const k of keysToOverride) {
+          if (hadOwn[k]) keyObj[k] = prevVal[k];
+          else delete keyObj[k];
+        }
+      }
     }
+
+    // Keep Speed's effective speed after super.update (super may overwrite speed).
+    this.speed = effSpeed;
 
     // Dash trail capture (visual only)
     if (!this._dashTrail) this._dashTrail = [];
-    if (this.dash && this.dash.active && now <= this.dash.endTime) {
-      this._dashTrail.push({ x: this.x, y: this.y, t: now });
-      while (this._dashTrail.length > 14) this._dashTrail.shift();
-    } else if (this._dashTrail.length) {
-      this._dashTrail = this._dashTrail.filter(p => (now - p.t) < 260);
-    }
-
-    this.validatePosition();
+    this._dashTrail.push({ x: this.x, y: this.y, t: now, a: this.angle });
+    // Keep last ~250ms of trail
+    const cutoff = now - 250;
+    while (this._dashTrail.length > 0 && this._dashTrail[0].t < cutoff) this._dashTrail.shift();
   }
+
 
   // Override takeDamage: immune during Phase (and convert 50% to heal)
   takeDamage(amount, source) {
@@ -264,7 +275,7 @@ export class SpeedTank extends PlayerBase {
 
     this.hp -= finalAmount;
     if (this.hp < 0) this.hp = 0;
-    if (Game && Game.ui) Game.ui.updateHealth(this.hp, this.maxHp);
+    if (Game && Game.ui) Game.ui.updateHealth(this.hp, this.maxHp, this.playerIndex || 1);
     if (Game) Game.shake = 10;
     return finalAmount;
   }
