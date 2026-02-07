@@ -17,7 +17,7 @@ on:
 
 jobs:
   visual:
-    runs-on: ubuntu-latest
+    runs-on: windows-latest
     timeout-minutes: 25
 
     steps:
@@ -34,7 +34,7 @@ jobs:
         run: npm ci
 
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install chromium
 
       - name: Run visual tests (check mode)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'update' }}
