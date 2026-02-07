@@ -33,26 +33,15 @@ if errorlevel 1 (
   exit /b 1
 )
 
-REM Ensure we are on target branch
+REM Current branch info (for user visibility only)
 set "CUR_BRANCH="
 for /f %%i in ('"%GIT_EXE%" rev-parse --abbrev-ref HEAD') do set "CUR_BRANCH=%%i"
 if not defined CUR_BRANCH (
   echo [ERROR] Cannot detect current branch.
   exit /b 1
 )
-if /I not "%CUR_BRANCH%"=="%TARGET_BRANCH%" (
-  echo [INFO] Switching branch: %CUR_BRANCH% ^> %TARGET_BRANCH% ...
-  "%GIT_EXE%" switch "%TARGET_BRANCH%" >nul 2>nul
-  if errorlevel 1 (
-    echo [INFO] Local branch not found. Trying to create tracking branch from origin/%TARGET_BRANCH% ...
-    "%GIT_EXE%" switch -c "%TARGET_BRANCH%" --track "origin/%TARGET_BRANCH%" >nul 2>nul
-    if errorlevel 1 (
-      echo [ERROR] Cannot switch to branch %TARGET_BRANCH%.
-      echo [HINT] Make sure origin/%TARGET_BRANCH% exists.
-      exit /b 1
-    )
-  )
-)
+echo [INFO] Current branch: %CUR_BRANCH%
+echo [INFO] Target remote branch: origin/%TARGET_BRANCH%
 
 REM Build commit message from args or auto timestamp
 if "%~1"=="" (
@@ -72,7 +61,7 @@ if errorlevel 1 (
 REM Commit only when there are staged changes
 "%GIT_EXE%" diff --cached --quiet
 if %errorlevel%==0 (
-  echo [INFO] No file changes to commit. Will push current branch state.
+  echo [INFO] No file changes to commit.
 ) else if %errorlevel% GEQ 2 (
   echo [ERROR] Failed while checking staged diff.
   exit /b 1
@@ -85,10 +74,12 @@ if %errorlevel%==0 (
   )
 )
 
-echo [INFO] Pushing %TARGET_BRANCH% to origin/%TARGET_BRANCH% ...
-"%GIT_EXE%" push -u origin "%TARGET_BRANCH%"
+REM Push current HEAD to target branch without switching local branch
+echo [INFO] Pushing HEAD to origin/%TARGET_BRANCH% ...
+"%GIT_EXE%" push origin "HEAD:%TARGET_BRANCH%"
 if errorlevel 1 (
   echo [ERROR] Push failed.
+  echo [HINT] If rejected (non-fast-forward), pull/rebase target branch or push to a new branch first.
   exit /b 1
 )
 
