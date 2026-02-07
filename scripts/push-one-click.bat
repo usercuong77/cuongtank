@@ -65,20 +65,14 @@ if errorlevel 1 (
 )
 
 REM Push strategy:
-REM 1) If upstream exists, push HEAD to that exact remote branch.
+REM 1) If upstream exists, use plain `git push` (safe and robust).
 REM 2) If not, push current branch to origin and set upstream.
 set "UPSTREAM="
 for /f %%i in ('"%GIT_EXE%" rev-parse --abbrev-ref --symbolic-full-name @{u} 2^>nul') do set "UPSTREAM=%%i"
 
 if defined UPSTREAM (
-  set "REMOTE="
-  set "REMOTE_BRANCH="
-  for /f "tokens=1* delims=/" %%a in ("%UPSTREAM%") do (
-    set "REMOTE=%%a"
-    set "REMOTE_BRANCH=%%b"
-  )
   echo [INFO] Pushing to %UPSTREAM% ...
-  "%GIT_EXE%" push %REMOTE% HEAD:%REMOTE_BRANCH%
+  "%GIT_EXE%" push
   if errorlevel 1 (
     echo [ERROR] Push failed.
     pause
