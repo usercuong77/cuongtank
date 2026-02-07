@@ -65,22 +65,28 @@ if errorlevel 1 (
 )
 
 REM Push strategy:
-REM 1) If upstream exists, use plain `git push` (safe and robust).
+REM 1) If upstream exists, push explicitly to that remote branch.
 REM 2) If not, push current branch to origin and set upstream.
-set "UPSTREAM="
-for /f %%i in ('"%GIT_EXE%" rev-parse --abbrev-ref --symbolic-full-name @{u} 2^>nul') do set "UPSTREAM=%%i"
+set "BRANCH="
+for /f %%i in ('"%GIT_EXE%" rev-parse --abbrev-ref HEAD') do set "BRANCH=%%i"
 
-if defined UPSTREAM (
-  echo [INFO] Pushing to %UPSTREAM% ...
-  "%GIT_EXE%" push
+set "UPSTREAM_REMOTE="
+set "UPSTREAM_MERGE="
+if defined BRANCH (
+  for /f %%i in ('"%GIT_EXE%" config --get branch.%BRANCH%.remote 2^>nul') do set "UPSTREAM_REMOTE=%%i"
+  for /f %%i in ('"%GIT_EXE%" config --get branch.%BRANCH%.merge 2^>nul') do set "UPSTREAM_MERGE=%%i"
+)
+
+if defined UPSTREAM_REMOTE if defined UPSTREAM_MERGE (
+  set "UPSTREAM_BRANCH=%UPSTREAM_MERGE:refs/heads/=%"
+  echo [INFO] Pushing to %UPSTREAM_REMOTE%/%UPSTREAM_BRANCH% ...
+  "%GIT_EXE%" push "%UPSTREAM_REMOTE%" "HEAD:%UPSTREAM_BRANCH%"
   if errorlevel 1 (
     echo [ERROR] Push failed.
     pause
     exit /b 1
   )
 ) else (
-  set "BRANCH="
-  for /f %%i in ('"%GIT_EXE%" rev-parse --abbrev-ref HEAD') do set "BRANCH=%%i"
   if not defined BRANCH (
     echo [ERROR] Cannot detect current branch.
     pause
