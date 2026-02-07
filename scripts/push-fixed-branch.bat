@@ -79,7 +79,7 @@ echo [INFO] Pushing HEAD to origin/%TARGET_BRANCH% ...
 "%GIT_EXE%" push origin "HEAD:%TARGET_BRANCH%"
 if errorlevel 1 (
   echo [ERROR] Push failed.
-  echo [HINT] If rejected (non-fast-forward), pull/rebase target branch or push to a new branch first.
+  echo [HINT] If rejected, run pull/rebase on target branch or push to a new branch first.
   exit /b 1
 )
 

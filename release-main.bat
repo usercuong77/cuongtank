@@ -2,12 +2,6 @@
 setlocal EnableExtensions DisableDelayedExpansion
 cd /d "%~dp0"
 
-set "NO_PAUSE=0"
-if /I "%~1"=="-NoPause" (
-  set "NO_PAUSE=1"
-  shift
-)
-
 if not exist "%~dp0scripts\push-fixed-branch.bat" (
   echo [ERROR] Missing file: scripts\push-fixed-branch.bat
   echo Press any key to close...
@@ -26,8 +20,6 @@ if "%EC%"=="0" (
   echo [FAILED] release-main finished with error code %EC%.
 )
 
-if "%NO_PAUSE%"=="0" (
-  echo Press any key to close...
-  pause >nul
-)
+echo Press any key to close...
+pause >nul
 exit /b %EC%
