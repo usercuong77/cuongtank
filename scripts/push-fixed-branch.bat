@@ -44,11 +44,20 @@ echo [INFO] Current branch: %CUR_BRANCH%
 echo [INFO] Target remote branch: origin/%TARGET_BRANCH%
 
 REM Build commit message from args or auto timestamp
-if "%~1"=="" (
+set "COMMIT_MSG="
+:collect_msg
+if "%~1"=="" goto msg_done
+if defined COMMIT_MSG (
+  set "COMMIT_MSG=%COMMIT_MSG% %~1"
+) else (
+  set "COMMIT_MSG=%~1"
+)
+shift
+goto collect_msg
+:msg_done
+if not defined COMMIT_MSG (
   for /f %%i in ('powershell -NoProfile -Command "Get-Date -Format yyyy-MM-dd_HH-mm-ss"') do set "NOW_TS=%%i"
   set "COMMIT_MSG=chore: quick update %NOW_TS%"
-) else (
-  set "COMMIT_MSG=%*"
 )
 
 echo [INFO] Staging changes...
