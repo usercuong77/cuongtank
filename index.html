@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="vi">
 <head>
     <meta charset="UTF-8">
@@ -3782,6 +3782,27 @@ if (sh) sh.addEventListener("change", () => {
             return PVP_AMMO_TYPES[id] || null;
         }
 
+        function getPlayersListSafe(){
+            if (typeof Game === 'undefined' || !Game) return [];
+            return (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
+        }
+
+        function resolveProjectileOwnerPlayer(projectile, playersList){
+            const b = projectile || null;
+            const list = Array.isArray(playersList) ? playersList : getPlayersListSafe();
+            let owner = null;
+            if (!b) return owner;
+            if (b.ownerPid != null) {
+                for (let i = 0; i < list.length; i++) {
+                    const p = list[i];
+                    if (p && p.pid === b.ownerPid) { owner = p; break; }
+                }
+            }
+            if (!owner && b.ownerPlayer) owner = b.ownerPlayer;
+            if (!owner && list.length) owner = list[0];
+            return owner;
+        }
+
         function pvpIsSummonTarget(t){
             if (!t) return false;
             if (typeof CloneTank !== 'undefined' && t instanceof CloneTank) return true;
@@ -4172,6 +4193,15 @@ if (sh) sh.addEventListener("change", () => {
             const localizedLabelHTML = getLocalizedSkillLabelHTML(systemId, skillKey);
             if (localizedLabelHTML) out = Object.assign({}, out, { labelHTML: localizedLabelHTML });
             return out;
+        }
+
+        function getSystemSkillCooldowns(systemId){
+            const sid = systemId || 'default';
+            return {
+                clone: (getSystemSkillDef(sid, 'clone') || {}).cooldown || 0,
+                stealth: (getSystemSkillDef(sid, 'stealth') || {}).cooldown || 0,
+                vampirism: (getSystemSkillDef(sid, 'vampirism') || {}).cooldown || 0
+            };
         }
 
 
@@ -6550,12 +6580,10 @@ if (__assCasting) { } else if (__isPvp) {
 }
 
                 const __noSkillCdHud = !!(Game && Game.adminNoSkillCooldown);
-                const __cdClone = getSystemSkillDef(this.systemId, 'clone').cooldown || 0;
-                const __cdStealth = getSystemSkillDef(this.systemId, 'stealth').cooldown || 0;
-                const __cdVamp = getSystemSkillDef(this.systemId, 'vampirism').cooldown || 0;
-                Game.ui.updateSkillCooldown('clone', this.skills.clone.lastUsed, __noSkillCdHud ? 0 : __cdClone);
-                Game.ui.updateSkillCooldown('stealth', this.skills.stealth.lastUsed, __noSkillCdHud ? 0 : __cdStealth);
-                Game.ui.updateSkillCooldown('vampirism', this.skills.vampirism.lastUsed, __noSkillCdHud ? 0 : __cdVamp);
+                const __cd = getSystemSkillCooldowns(this.systemId);
+                Game.ui.updateSkillCooldown('clone', this.skills.clone.lastUsed, __noSkillCdHud ? 0 : __cd.clone);
+                Game.ui.updateSkillCooldown('stealth', this.skills.stealth.lastUsed, __noSkillCdHud ? 0 : __cd.stealth);
+                Game.ui.updateSkillCooldown('vampirism', this.skills.vampirism.lastUsed, __noSkillCdHud ? 0 : __cd.vampirism);
                 this.validatePosition();
             }
             shoot(obstacles) {
@@ -10412,12 +10440,10 @@ this.ui.buffs.innerHTML = '';
                             Game.ui.updateWeaponInventory(p1.inventory, p1.currentWeaponIndex);
                             Game.ui.updateTankSystemUI(p1.systemId || Game.selectedSystemId);
                             const __noSkillCdHud = !!(Game && Game.adminNoSkillCooldown);
-                            const __cdClone = getSystemSkillDef(p1.systemId, 'clone').cooldown || 0;
-                            const __cdStealth = getSystemSkillDef(p1.systemId, 'stealth').cooldown || 0;
-                            const __cdVamp = getSystemSkillDef(p1.systemId, 'vampirism').cooldown || 0;
-                            Game.ui.updateSkillCooldown('clone', p1.skills.clone.lastUsed, __noSkillCdHud ? 0 : __cdClone);
-                            Game.ui.updateSkillCooldown('stealth', p1.skills.stealth.lastUsed, __noSkillCdHud ? 0 : __cdStealth);
-                            Game.ui.updateSkillCooldown('vampirism', p1.skills.vampirism.lastUsed, __noSkillCdHud ? 0 : __cdVamp);
+                            const __cd = getSystemSkillCooldowns(p1.systemId);
+                            Game.ui.updateSkillCooldown('clone', p1.skills.clone.lastUsed, __noSkillCdHud ? 0 : __cd.clone);
+                            Game.ui.updateSkillCooldown('stealth', p1.skills.stealth.lastUsed, __noSkillCdHud ? 0 : __cd.stealth);
+                            Game.ui.updateSkillCooldown('vampirism', p1.skills.vampirism.lastUsed, __noSkillCdHud ? 0 : __cd.vampirism);
                         } catch(e){}
                         }
                     }
@@ -10432,7 +10458,7 @@ this.ui.buffs.innerHTML = '';
                     Game.turrets = Game.turrets.filter(t => !t.markedForDeletion);
                 }
 
-                const __players = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
+                const __players = getPlayersListSafe();
                 const __freezeEnemies = !!Game.adminFreeze;
 
                 Game.pickups.forEach((p) => {
@@ -10630,16 +10656,8 @@ this.ui.buffs.innerHTML = '';
 
                     // PvP: player bullets hit opponent (no self/teammate)
                     if (Game.mode === 'PVP_DUEL_AIM' && b.owner === 'PLAYER') {
-                        const __plist = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
-                        let __owner = null;
-                        if (b.ownerPid != null) {
-                            for (let __i = 0; __i < __plist.length; __i++) {
-                                const __p = __plist[__i];
-                                if (__p && __p.pid === b.ownerPid) { __owner = __p; break; }
-                            }
-                        }
-                        if (!__owner && b.ownerPlayer) __owner = b.ownerPlayer;
-                        if (!__owner && __plist.length) __owner = __plist[0];
+                        const __plist = getPlayersListSafe();
+                        const __owner = resolveProjectileOwnerPlayer(b, __plist);
                         let __hit = false;
                         for (let __i = 0; __i < __plist.length; __i++) {
                             const __pl = __plist[__i];
@@ -10704,15 +10722,8 @@ this.ui.buffs.innerHTML = '';
                             if (!b.config.noDirectHit) e.hp -= dmg;
                             let __owner = null;
                             if (b.owner === 'PLAYER') {
-                                const __plist = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
-                                if (b.ownerPid != null) {
-                                    for (let __i = 0; __i < __plist.length; __i++) {
-                                        const __p = __plist[__i];
-                                        if (__p && __p.pid === b.ownerPid) { __owner = __p; break; }
-                                    }
-                                }
-                                if (!__owner && b.ownerPlayer) __owner = b.ownerPlayer;
-                                if (!__owner && __plist.length) __owner = __plist[0];
+                                const __plist = getPlayersListSafe();
+                                __owner = resolveProjectileOwnerPlayer(b, __plist);
                             }
 
 if (b.owner === 'PLAYER' && __owner && typeof __owner.gainUltiCharge === 'function') __owner.gainUltiCharge(0.5);
@@ -10886,8 +10897,8 @@ if (b.config.special === 'CHAIN') chainLightning(e, (dmg * b.config.chainDmgFact
                 },
                 speed: {
                     Q: { name:'Lướt', desc:'Lướt theo hướng WASD; nếu đứng yên thì lướt theo hướng nòng. Trong lúc lướt sẽ không bắn.' },
-                    E: { name:'Phase', desc:'Miễn thương ngắn. Nếu nhận damage trong Phase thì chuyển thành hồi 50% máu theo damage.' },
-                    R: { name:'Adrenaline', desc:'Cường tốc: tăng damage + speed và giảm hồi chiêu bắn (cooldown * 0.5 dùng 1 lần).' }
+                    E: { name:'Miễn Thương', desc:'Miễn thương ngắn. Nếu nhận sát thương trong thời gian hiệu lực, hồi lại 50% HP lượng sát thương đó.' },
+                    R: { name:'Cường Tốc', desc:'Tăng sát thương + tốc độ di chuyển và giảm hồi chiêu bắn (cooldown x0.5 cho một lần bắn).' }
                 },
                 engineer: {
                     Q: { name:'Tháp Pháo', desc:'Triệu hồi tháp pháo hỗ trợ bắn. Vị trí đặt tháp rất quan trọng để giữ góc bắn.' },

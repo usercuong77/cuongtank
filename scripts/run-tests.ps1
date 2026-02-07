@@ -51,13 +51,21 @@ function Ensure-NodeTools {
 $exitCode = 0
 
 try {
-    Set-Location -Path $PSScriptRoot
-    if (-not (Test-Path ".\package.json")) {
-        throw "package.json not found in: $PSScriptRoot"
+    $projectRoot = $PSScriptRoot
+    if (-not (Test-Path (Join-Path $projectRoot "package.json"))) {
+        $parent = Split-Path -Parent $PSScriptRoot
+        if ($parent -and (Test-Path (Join-Path $parent "package.json"))) {
+            $projectRoot = $parent
+        }
+    }
+    if (-not (Test-Path (Join-Path $projectRoot "package.json"))) {
+        throw "package.json not found in: $PSScriptRoot or parent folder"
     }
 
+    Set-Location -Path $projectRoot
+
     $tools = Ensure-NodeTools
-    Write-Step ("Project: " + $PSScriptRoot)
+    Write-Step ("Project: " + $projectRoot)
     Write-Step ("Node: " + (& $tools.Node -v))
     Write-Step ("NPM : " + (& $tools.Npm -v))
 
