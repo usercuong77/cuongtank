@@ -9,6 +9,11 @@
 - `run-visual-check.bat`: run visual-only check
 - `run-visual-update.bat`: update visual snapshots (only when you accept UI changes)
 
+## Push Helpers
+- `push-dev.bat`: commit + push to `codex/ci-setup` (safe dev branch, no Netlify deploy)
+- `release-main.bat`: commit + push to `main` (production release branch)
+- `push-one-click.bat`: commit + push current branch as-is
+
 ## Scripts
 - `scripts/`: internal helper scripts used by the root `.bat` launchers
 
