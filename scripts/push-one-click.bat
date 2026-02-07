@@ -1,8 +1,8 @@
 @echo off
 setlocal EnableExtensions DisableDelayedExpansion
 
-REM Run in project directory (where this file lives)
-cd /d "%~dp0"
+REM Run in project root (this script lives in scripts\)
+cd /d "%~dp0.."
 
 REM Locate git (PATH first, then common install locations)
 set "GIT_EXE=git"
