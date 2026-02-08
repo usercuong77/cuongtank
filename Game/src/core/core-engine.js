@@ -3614,6 +3614,28 @@ if (__assCasting) { } else if (__isPvp) {
                 return { hpMult, dmgMult, speedMult, fireRateMult, spawnInterval, spawnCount, bossHpMult, bossDmgMult };
             },
             startWave() {
+                const __startLifecycle = (() => {
+                    try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.runWaveStartLifecycle === 'function') {
+                            return window.App.runtime.runWaveStartLifecycle;
+                        }
+                    } catch (e) {}
+                    try { if (typeof window.runWaveStartLifecycle === 'function') return window.runWaveStartLifecycle; } catch (e) {}
+                    return null;
+                })();
+                if (typeof __startLifecycle === 'function') {
+                    const __ok = __startLifecycle({
+                        waveManager: this,
+                        game: Game,
+                        worldWidth: WORLD_WIDTH,
+                        worldHeight: WORLD_HEIGHT,
+                        createDamageTextFn: createDamageText,
+                        setElDisplayFn: setElDisplay
+                    });
+                    if (__ok) return;
+                }
+
+                // Safety fallback to keep runtime stable if wave-start module is unavailable.
                 this.active = true; this.bossSpawned = false; this.isBossWave = (this.wave % 5 === 0); this.scaling = this.computeScaling(); Game.generateObstacles();
                 // Co-op: revive at wave start while keeping inventory and shop buffs.
                 const __players = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);

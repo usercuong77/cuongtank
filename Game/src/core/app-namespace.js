@@ -112,6 +112,7 @@
         'systems-skills.js',
         'core-engine.js',
         'core-wave-rules.js',
+        'core-wave-start-rules.js',
         'core-spawn-rules.js',
         'core-input-bindings.js',
         'save-flow.js',
