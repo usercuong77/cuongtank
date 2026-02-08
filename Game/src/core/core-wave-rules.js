@@ -33,14 +33,34 @@
         return { hpMult, dmgMult, speedMult, fireRateMult, spawnInterval, spawnCount, bossHpMult, bossDmgMult };
     }
 
+    function computeWaveScalingSafe(wave, game) {
+        try {
+            return computeWaveScalingForGame(wave, game);
+        } catch (e) {}
+        // Safety fallback: baseline scaling without external dependencies.
+        const w = wave | 0;
+        const t = Math.max(0, w - 1);
+        const hpMult = Math.min(4.0, 1 + 0.12 * t);
+        const dmgMult = Math.min(3.0, 1 + 0.08 * t);
+        const speedMult = Math.min(1.8, 1 + 0.02 * t);
+        const fireRateMult = Math.min(1.8, 1 + 0.015 * t);
+        const spawnInterval = Math.max(22, 60 - w * 2);
+        const spawnCount = Math.min(60, 3 + Math.floor(w * 2) + Math.floor(w * w * 0.08));
+        const bossHpMult = 1 + (w / 8);
+        const bossDmgMult = 1 + (w / 12);
+        return { hpMult, dmgMult, speedMult, fireRateMult, spawnInterval, spawnCount, bossHpMult, bossDmgMult };
+    }
+
     try {
         const app = window.App || (window.App = {});
         app.runtime = app.runtime || {};
         app.runtime.getWavePlayerCount = getWavePlayerCount;
         app.runtime.computeWaveScalingForGame = computeWaveScalingForGame;
+        app.runtime.computeWaveScalingSafe = computeWaveScalingSafe;
 
         // Backward-compatible aliases for transitional runtime usage.
         window.getWavePlayerCount = getWavePlayerCount;
         window.computeWaveScalingForGame = computeWaveScalingForGame;
+        window.computeWaveScalingSafe = computeWaveScalingSafe;
     } catch (e) {}
 })();

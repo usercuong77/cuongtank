@@ -3589,6 +3589,14 @@ if (__assCasting) { } else if (__isPvp) {
             computeScaling() {
                 const __compute = (() => {
                     try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.computeWaveScalingSafe === 'function') {
+                            return window.App.runtime.computeWaveScalingSafe;
+                        }
+                    } catch (e) {}
+                    try {
+                        if (typeof window.computeWaveScalingSafe === 'function') return window.computeWaveScalingSafe;
+                    } catch (e) {}
+                    try {
                         if (window.App && window.App.runtime && typeof window.App.runtime.computeWaveScalingForGame === 'function') {
                             return window.App.runtime.computeWaveScalingForGame;
                         }
@@ -3616,6 +3624,12 @@ if (__assCasting) { } else if (__isPvp) {
             startWave() {
                 const __startLifecycle = (() => {
                     try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.runWaveStartLifecycleSafe === 'function') {
+                            return window.App.runtime.runWaveStartLifecycleSafe;
+                        }
+                    } catch (e) {}
+                    try { if (typeof window.runWaveStartLifecycleSafe === 'function') return window.runWaveStartLifecycleSafe; } catch (e) {}
+                    try {
                         if (window.App && window.App.runtime && typeof window.App.runtime.runWaveStartLifecycle === 'function') {
                             return window.App.runtime.runWaveStartLifecycle;
                         }
@@ -3635,43 +3649,27 @@ if (__assCasting) { } else if (__isPvp) {
                     if (__ok) return;
                 }
 
-                // Safety fallback to keep runtime stable if wave-start module is unavailable.
-                this.active = true; this.bossSpawned = false; this.isBossWave = (this.wave % 5 === 0); this.scaling = this.computeScaling(); Game.generateObstacles();
-                // Co-op: revive at wave start while keeping inventory and shop buffs.
-                const __players = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
-                const __alive = (__players && __players.length) ? (__players.find(p => p && p.hp > 0) || null) : null;
-                const __anchor = __alive || ((__players && __players.length) ? __players[0] : null);
-                const __skipReviveOnce = !!(Game && Game.__skipCoopReviveOnce);
-                if (Game && Game.__skipCoopReviveOnce) Game.__skipCoopReviveOnce = false;
-                if (__players && __players.length >= 2 && __alive && !__skipReviveOnce) {
-                    const __hpPct = Math.max(0, Math.min(1, (__alive.hp || 0) / Math.max(1, (__alive.maxHp || 1))));
-                    let __rev = 0;
-                    for (let __i = 0; __i < __players.length; __i++) {
-                        const __pl = __players[__i];
-                        if (!__pl) continue;
-                        if (__pl.hp <= 0) {
-                            __pl.hp = Math.max(1, Math.round((__pl.maxHp || 100) * __hpPct)); __pl.__noCollide = false;
-                            __pl.isStealth = false;
-                            if (__pl.dash) __pl.dash.active = false;
-                            if (__pl.ram) __pl.ram.active = false;
-                            // Reset auto-aim cache to reacquire targets cleanly.
-                            if (__pl.__autoAim) { __pl.__autoAim.target = null; __pl.__autoAim.candidates = []; __pl.__autoAim.idx = 0; __pl.__autoAim.nextScan = 0; }
-                            __pl.__easyTarget = null;
+                // Last-resort inline fallback if wave-start rules are unavailable.
+                this.active = true;
+                this.bossSpawned = false;
+                this.isBossWave = (this.wave % 5 === 0);
+                this.scaling = this.computeScaling();
+                if (Game && typeof Game.generateObstacles === 'function') Game.generateObstacles();
 
-                            // spawn near the first alive player (anchor)
-                            const __off = (__i === 0 ? -1 : 1) * 55;
-                            const __r = (__pl.radius || 22);
-                            __pl.x = Math.max(__r, Math.min(WORLD_WIDTH - __r, (__anchor.x + __off)));
-                            __pl.y = Math.max(__r, Math.min(WORLD_HEIGHT - __r, (__anchor.y + 55)));
-                            __rev++;
-                        }
-                    }
-                    if (__rev > 0) createDamageText(__anchor.x, __anchor.y - 110, "REVIVE!", "#00ff88");
+                if (this.isBossWave) {
+                    this.enemiesRemainingToSpawn = 1;
+                    try {
+                        const __ps = (Game && Game.players && Game.players.length) ? Game.players : (Game && Game.player ? [Game.player] : []);
+                        const __anchor = __ps[0] || Game.player;
+                        if (__anchor) createDamageText(__anchor.x, __anchor.y - 100, "BOSS BATTLE!", "#D50000");
+                    } catch (e) {}
+                    setElDisplay('bossHealthContainer', 'block');
+                } else {
+                    const count = (this.scaling ? this.scaling.spawnCount : (3 + Math.floor(this.wave * 1.5)));
+                    this.enemiesRemainingToSpawn = count;
+                    setElDisplay('bossHealthContainer', 'none');
                 }
-
-                if (this.isBossWave) { this.enemiesRemainingToSpawn = 1; createDamageText((__anchor||Game.player).x, (__anchor||Game.player).y - 100, "BOSS BATTLE!", "#D50000"); setElDisplay('bossHealthContainer', 'block'); } 
-                else { const count = (this.scaling ? this.scaling.spawnCount : (3 + Math.floor(this.wave * 1.5))); this.enemiesRemainingToSpawn = count; setElDisplay('bossHealthContainer', 'none'); }
-                Game.ui.updateWave(this.wave);
+                if (Game && Game.ui && typeof Game.ui.updateWave === 'function') Game.ui.updateWave(this.wave);
             },
             update() {
                 if (!this.active) return;
@@ -3684,6 +3682,12 @@ if (__assCasting) { } else if (__isPvp) {
                     }
                 } else if (Game.enemies.length === 0) {
                     const __transition = (() => {
+                        try {
+                            if (window.App && window.App.runtime && typeof window.App.runtime.runWaveClearTransitionSafe === 'function') {
+                                return window.App.runtime.runWaveClearTransitionSafe;
+                            }
+                        } catch (e) {}
+                        try { if (typeof window.runWaveClearTransitionSafe === 'function') return window.runWaveClearTransitionSafe; } catch (e) {}
                         try {
                             if (window.App && window.App.runtime && typeof window.App.runtime.runWaveClearTransition === 'function') {
                                 return window.App.runtime.runWaveClearTransition;
@@ -3704,24 +3708,16 @@ if (__assCasting) { } else if (__isPvp) {
                         if (__ok) return;
                     }
 
-                    // Safety fallback to keep runtime stable if wave-transition module is unavailable.
+                    // Last-resort inline fallback if wave-transition rules are unavailable.
                     this.active = false;
-
                     if (!Game.endlessMode && this.isBossWave && (this.wave >= (this.finalWave || 20))) {
                         try { if (Game.player) createDamageText(Game.player.x, Game.player.y - 50, "CHIẾN THẮNG!", "#4CAF50"); } catch(e){}
                         if (Game && typeof Game.victory === 'function') Game.victory();
                         return;
                     }
-
                     try { if (this.wave >= ASSASSIN_UNLOCK_WAVE) unlockAssassin('wave20'); } catch(e){}
                     this.wave++;
-                    try {
-                        const __ps = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);
-                        let __a = null;
-                        for (const __p of __ps) { if (__p && __p.hp > 0) { __a = __p; break; } }
-                        __a = __a || __ps[0] || Game.player;
-                        if (__a) createDamageText(__a.x, __a.y - 50, "WAVE COMPLETE!", "#FFD700");
-                    } catch(e){}
+                    try { if (Game.player) createDamageText(Game.player.x, Game.player.y - 50, "WAVE COMPLETE!", "#FFD700"); } catch(e){}
                     Shop.show(this.wave, Game.gold, () => {
                         this.startWave();
                         const __ps2 = (Game.players && Game.players.length) ? Game.players : (Game.player ? [Game.player] : []);

@@ -15,6 +15,7 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - `DONE`: enemy spawn pool/placement rules extracted from `core-engine.js` to `core-spawn-rules.js`.
 - `DONE`: wave-start lifecycle (revive/spawn-count/boss HUD) extracted from `core-engine.js` to `core-wave-start-rules.js`.
 - `DONE`: wave-clear transition (victory/next-wave/shop heal flow) extracted from `core-engine.js` to `core-wave-transition-rules.js`.
+- `DONE`: wave rules modules now expose resilient `*Safe` wrappers (`computeWaveScalingSafe`, `runWaveStartLifecycleSafe`, `runWaveClearTransitionSafe`) and `core-engine` resolves these first.
 - `DONE`: legacy monolith removed from live runtime and archived at:
   - `Backup/archive/runtime-legacy/game.monolith.js`
 - `DONE`: automated guards prevent monolith regressions.
@@ -36,6 +37,7 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
   - `systems-pvp.js` keeps legacy global constants used by `core-engine.js`/`qa-hooks.js`
 - Runtime compatibility guarantees:
   - module exports can be published via `App.compat.expose(...)` with legacy global aliases
+  - `WaveManager` keeps minimal last-resort inline fallback, while main wave flow is delegated to `core-wave-*.js` safe wrappers
 
 ## Current Test Entry
 - `Test/run-test.bat` (single runner)
