@@ -24,6 +24,7 @@ if not defined NPM_CMD (
 if /I "%MODE%"=="help" goto usage
 if /I "%MODE%"=="preflight" goto run_preflight
 if /I "%MODE%"=="release" goto run_release
+if /I "%MODE%"=="quick" goto run_quick
 if /I "%MODE%"=="e2e" goto run_e2e
 if /I "%MODE%"=="headed" goto run_headed
 if /I "%MODE%"=="ui" goto run_ui
@@ -40,6 +41,10 @@ goto ensure_and_run
 
 :run_release
 set "SCRIPT_NAME=check:release"
+goto ensure_and_run
+
+:run_quick
+set "SCRIPT_NAME=check:quick"
 goto ensure_and_run
 
 :run_e2e
@@ -94,6 +99,7 @@ echo.
 echo Modes:
 echo   preflight      Full local gate (lint + unit + syntax + assets + e2e + git sanity) [default]
 echo   release        Strict release gate (requires main + clean git tree)
+echo   quick          Fast gate (lint + unit + syntax + assets, skip e2e)
 echo   e2e            Run all e2e tests
 echo   headed         Run e2e tests in headed mode
 echo   ui             Run Playwright UI mode

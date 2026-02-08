@@ -42,11 +42,13 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 ## Current Test Entry
 - `Test/run-test.bat` (single runner)
   - default: `preflight`
-  - optional modes: `release`, `e2e`, `headed`, `ui`, `visual`, `visual-update`
+  - optional modes: `release`, `quick`, `e2e`, `headed`, `ui`, `visual`, `visual-update`
 - lint gate:
   - `check:lint` enforces `no-unused-vars` + `no-undef` on split-safe scope (`Game/src/data`, `core-wave*`, `core-spawn-rules`, `core-input-bindings`) and test/scripts
 - fast logic gate:
   - `check:unit` validates `core-wave-rules`, `core-wave-start-rules`, `core-wave-transition-rules`, and `pvp-tuning-data` without launching browser
+- CI quick gate:
+  - `check:quick` runs before CI e2e browser tests; CI e2e suite includes `runtime.spec` + `smoke.spec` + `gameplay.spec`
 - visual shortcuts:
   - `Test/run-visual-check.bat`
   - `Test/run-visual-update.bat`

@@ -31,9 +31,13 @@ jobs:
         working-directory: Test
         run: npx playwright install --with-deps chromium
 
+      - name: Run quick preflight gate
+        working-directory: Test
+        run: npm run check:quick
+
       - name: Run E2E tests
         working-directory: Test
-        run: npx playwright test tests/smoke.spec.js tests/gameplay.spec.js
+        run: npx playwright test tests/runtime.spec.js tests/smoke.spec.js tests/gameplay.spec.js
 
       - name: Upload Playwright report (always)
         if: always()

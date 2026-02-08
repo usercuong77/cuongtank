@@ -14,6 +14,7 @@
     "check:unit": "node scripts/check-unit-logic.js",
     "check:syntax": "node scripts/check-syntax.js",
     "check:assets": "node scripts/check-static-links.js",
+    "check:quick": "node scripts/pre-release-check.js --quick",
     "check:full": "node scripts/pre-release-check.js",
     "check:release": "node scripts/pre-release-check.js --release"
   },
