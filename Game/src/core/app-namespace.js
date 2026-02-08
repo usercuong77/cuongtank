@@ -111,6 +111,7 @@
         'systems-pvp.js',
         'systems-skills.js',
         'core-engine.js',
+        'core-wave-rules.js',
         'core-input-bindings.js',
         'save-flow.js',
         'core-state.js',

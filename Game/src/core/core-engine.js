@@ -3587,31 +3587,30 @@ if (__assCasting) { } else if (__isPvp) {
             wave: 1, finalWave: 20, enemiesRemainingToSpawn: 0, spawnTimer: 0, active: false, isBossWave: false, bossSpawned: false,
             scaling: null,
             computeScaling() {
+                const __compute = (() => {
+                    try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.computeWaveScalingForGame === 'function') {
+                            return window.App.runtime.computeWaveScalingForGame;
+                        }
+                    } catch (e) {}
+                    try {
+                        if (typeof window.computeWaveScalingForGame === 'function') return window.computeWaveScalingForGame;
+                    } catch (e) {}
+                    return null;
+                })();
+                if (typeof __compute === 'function') return __compute(this.wave, Game);
+
+                // Safety fallback to keep runtime stable even when wave-rules module is unavailable.
                 const w = this.wave | 0;
                 const t = Math.max(0, w - 1);
-                let hpMult = Math.min(4.0, 1 + 0.12 * t);
-                let dmgMult = Math.min(3.0, 1 + 0.08 * t);
+                const hpMult = Math.min(4.0, 1 + 0.12 * t);
+                const dmgMult = Math.min(3.0, 1 + 0.08 * t);
                 const speedMult = Math.min(1.8, 1 + 0.02 * t);
                 const fireRateMult = Math.min(1.8, 1 + 0.015 * t);
-
                 const spawnInterval = Math.max(22, 60 - w * 2);
-                const _baseSpawnCount = Math.min(60, 3 + Math.floor(w * 2) + Math.floor(w * w * 0.08));
-                const _pCount = (typeof Game !== 'undefined' && Game.players && Game.players.length >= 2) ? 2 : 1;
-                const spawnCount = (_pCount >= 2) ? Math.min(90, _baseSpawnCount * 2) : _baseSpawnCount;
-
-                let bossHpMult = 1 + (w / 8);
+                const spawnCount = Math.min(60, 3 + Math.floor(w * 2) + Math.floor(w * w * 0.08));
+                const bossHpMult = 1 + (w / 8);
                 const bossDmgMult = 1 + (w / 12);
-
-
-
-                // 2P balancing (anti-overpowered late game): monsters & boss tankier, monsters hit a bit harder
-                const is2P = (_pCount >= 2);
-                if (is2P) {
-                    hpMult *= 1.35;
-                    bossHpMult *= 1.8;
-                    dmgMult *= 1.2;
-                }
-
                 return { hpMult, dmgMult, speedMult, fireRateMult, spawnInterval, spawnCount, bossHpMult, bossDmgMult };
             },
             startWave() {

@@ -11,6 +11,7 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - `DONE`: PvP runtime resolves tuning from `App.data` first, then legacy globals/config fallback.
 - `DONE`: core input event bindings extracted from `core-engine.js` to `core-input-bindings.js`.
 - `DONE`: VFX GFX theme data extracted from `ui-vfx.js` to `data/vfx-gfx-data.js`.
+- `DONE`: wave progression/scaling rules extracted from `core-engine.js` to `core-wave-rules.js`.
 - `DONE`: legacy monolith removed from live runtime and archived at:
   - `Backup/archive/runtime-legacy/game.monolith.js`
 - `DONE`: automated guards prevent monolith regressions.
