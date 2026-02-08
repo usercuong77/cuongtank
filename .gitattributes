@@ -1,6 +1,9 @@
 * text=auto
 
 # Source and docs: normalize to LF
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+.gitignore text eol=lf
 *.js text eol=lf
 *.css text eol=lf
 *.html text eol=lf
