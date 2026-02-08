@@ -72,19 +72,24 @@ function resolveNpmCommand() {
   return fallback;
 }
 
+function runNpmScript(label, scriptName) {
+  const npmCmd = resolveNpmCommand();
+  if (process.platform === 'win32') {
+    runStep(label, 'cmd.exe', ['/c', npmCmd, 'run', scriptName], { cwd: testRoot });
+  } else {
+    runStep(label, npmCmd, ['run', scriptName], { cwd: testRoot });
+  }
+}
+
 function main() {
   console.log('[pre-release] mode:', isRelease ? 'release' : (isQuick ? 'quick' : 'full'));
 
+  runNpmScript('Lint check', 'check:lint');
   runStep('Syntax check', process.execPath, [path.join('scripts', 'check-syntax.js')], { cwd: testRoot });
   runStep('Static links + runtime order check', process.execPath, [path.join('scripts', 'check-static-links.js')], { cwd: testRoot });
 
   if (!isQuick) {
-    const npmCmd = resolveNpmCommand();
-    if (process.platform === 'win32') {
-      runStep('E2E test suite', 'cmd.exe', ['/c', npmCmd, 'run', 'test:e2e'], { cwd: testRoot });
-    } else {
-      runStep('E2E test suite', npmCmd, ['run', 'test:e2e'], { cwd: testRoot });
-    }
+    runNpmScript('E2E test suite', 'test:e2e');
   } else {
     console.log('\n==> E2E test suite');
     console.log('[skip] quick mode enabled');
