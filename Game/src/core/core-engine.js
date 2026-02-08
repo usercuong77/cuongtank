@@ -3688,14 +3688,78 @@ if (__assCasting) { } else if (__isPvp) {
 }
             },
             spawnEnemy() {
-                let typeKey; if (this.isBossWave) { typeKey = 'BOSS'; } else { const pool = ['RED']; if (this.wave >= 2) pool.push('YELLOW'); if (this.wave >= 3) pool.push('YELLOW', 'BLACK'); if (this.wave >= 4) pool.push('BLACK', 'BLACK', 'PURPLE'); if (this.wave >= 5) pool.push('PURPLE', 'PURPLE'); typeKey = pool[Math.floor(Math.random() * pool.length)]; }
-                let x, y, valid = false; let attempts = 0;
-                while (!valid && attempts < 50) {
-                    const edge = Math.floor(Math.random() * 4); const buffer = 100;
-                    switch(edge) { case 0: x = Camera.x + Math.random() * canvas.width; y = Camera.y - buffer; break; case 1: x = Camera.x + canvas.width + buffer; y = Camera.y + Math.random() * canvas.height; break; case 2: x = Camera.x + Math.random() * canvas.width; y = Camera.y + canvas.height + buffer; break; case 3: x = Camera.x - buffer; y = Camera.y + Math.random() * canvas.height; break; }
-                    x = Math.max(100, Math.min(WORLD_WIDTH - 100, x)); y = Math.max(100, Math.min(WORLD_HEIGHT - 100, y));
-                    let hitObs = false; for(let obs of Game.obstacles) { if (checkCircleRect({x, y, radius: 80}, obs)) { hitObs = true; break; } }
-                    if (!hitObs) valid = true; attempts++;
+                const __pickType = (() => {
+                    try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.pickWaveEnemyType === 'function') {
+                            return window.App.runtime.pickWaveEnemyType;
+                        }
+                    } catch (e) {}
+                    try { if (typeof window.pickWaveEnemyType === 'function') return window.pickWaveEnemyType; } catch (e) {}
+                    return null;
+                })();
+                const typeKey = (typeof __pickType === 'function')
+                    ? __pickType(this.wave, this.isBossWave, Math.random)
+                    : (() => {
+                        if (this.isBossWave) return 'BOSS';
+                        const pool = ['RED'];
+                        if (this.wave >= 2) pool.push('YELLOW');
+                        if (this.wave >= 3) pool.push('YELLOW', 'BLACK');
+                        if (this.wave >= 4) pool.push('BLACK', 'BLACK', 'PURPLE');
+                        if (this.wave >= 5) pool.push('PURPLE', 'PURPLE');
+                        return pool[Math.floor(Math.random() * pool.length)];
+                    })();
+
+                const __findSpawn = (() => {
+                    try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.findEdgeSpawnPoint === 'function') {
+                            return window.App.runtime.findEdgeSpawnPoint;
+                        }
+                    } catch (e) {}
+                    try { if (typeof window.findEdgeSpawnPoint === 'function') return window.findEdgeSpawnPoint; } catch (e) {}
+                    return null;
+                })();
+                let x = 0;
+                let y = 0;
+                let valid = false;
+                if (typeof __findSpawn === 'function') {
+                    const p = __findSpawn({
+                        cameraX: Camera.x,
+                        cameraY: Camera.y,
+                        viewportWidth: canvas.width,
+                        viewportHeight: canvas.height,
+                        worldWidth: WORLD_WIDTH,
+                        worldHeight: WORLD_HEIGHT,
+                        obstacles: Game.obstacles,
+                        checkCircleRectFn: checkCircleRect,
+                        maxAttempts: 50,
+                        edgeBuffer: 100,
+                        worldPadding: 100,
+                        obstacleRadius: 80,
+                        randomFn: Math.random
+                    });
+                    x = Number(p && p.x || 0);
+                    y = Number(p && p.y || 0);
+                    valid = !!(p && p.valid);
+                } else {
+                    let attempts = 0;
+                    while (!valid && attempts < 50) {
+                        const edge = Math.floor(Math.random() * 4);
+                        const buffer = 100;
+                        switch (edge) {
+                            case 0: x = Camera.x + Math.random() * canvas.width; y = Camera.y - buffer; break;
+                            case 1: x = Camera.x + canvas.width + buffer; y = Camera.y + Math.random() * canvas.height; break;
+                            case 2: x = Camera.x + Math.random() * canvas.width; y = Camera.y + canvas.height + buffer; break;
+                            default: x = Camera.x - buffer; y = Camera.y + Math.random() * canvas.height; break;
+                        }
+                        x = Math.max(100, Math.min(WORLD_WIDTH - 100, x));
+                        y = Math.max(100, Math.min(WORLD_HEIGHT - 100, y));
+                        let hitObs = false;
+                        for (let obs of Game.obstacles) {
+                            if (checkCircleRect({ x, y, radius: 80 }, obs)) { hitObs = true; break; }
+                        }
+                        if (!hitObs) valid = true;
+                        attempts++;
+                    }
                 }
                 if (valid) { const sc = this.scaling || this.computeScaling(); const hpMult = this.isBossWave ? sc.bossHpMult : sc.hpMult; const dmgMult = this.isBossWave ? sc.bossDmgMult : sc.dmgMult; const speedMult = sc.speedMult; const fireRateMult = sc.fireRateMult; Game.enemies.push(new Enemy(x, y, typeKey, hpMult, dmgMult, speedMult, fireRateMult)); }
             }
