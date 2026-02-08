@@ -1,0 +1,1605 @@
+﻿body {
+            margin: 0;
+            overflow: hidden;
+            background-color: #121212;
+            font-family: 'Segoe UI', Tahoma, Arial, 'Consolas', 'Courier New', sans-serif;
+            color: white;
+            user-select: none;
+        }
+
+        #gameCanvas {
+            display: block;
+        }
+
+        /* === UI Layer === */
+        .ui-layer {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+        }
+
+        /* HUD: Top Left */
+        #hud-top-left {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            text-align: left;
+        }
+        .hud-text {
+            font-size: 1.2rem;
+            font-weight: bold;
+            margin-bottom: 5px;
+            text-shadow: 2px 2px 0 #000;
+        }
+        .highlight { color: #4CAF50; }
+        .wave-text { color: #FFD700; font-size: 1.5rem; }
+
+        /* HUD: Top Right - Buffs */
+        #hud-top-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            text-align: right;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+        }
+        
+        .buff-icon {
+            display: inline-block;
+            padding: 5px 10px;
+            margin-top: 5px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            background: rgba(0,0,0,0.6);
+            border: 1px solid white;
+        }
+
+        /* WEAPON & SKILL BAR */
+        #bottomBar {
+            position: absolute;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            pointer-events: auto;
+        }
+
+
+#playersHudRow{
+    display:flex;
+    gap: 22px;
+    align-items: flex-end;
+    justify-content: center;
+    width: min(980px, 96vw);
+}
+
+#playersHudRow.twoP{
+    justify-content: space-between;
+    gap: 18px;
+}
+
+#playersHudRow.twoP .playerHud{
+    width: 48%;
+}
+
+.hudDivider{
+    width: 2px;
+    min-height: 190px;
+    background: rgba(255,255,255,0.16);
+    border-radius: 2px;
+    align-self: stretch;
+    margin: 0 8px;
+    display: none;
+}
+
+#playersHudRow.twoP .hudDivider{
+    display: block;
+}
+
+/* tighter on narrow screens */
+@media (max-width: 980px){
+    #playersHudRow{ width: 96vw; }
+    #healthBarContainer, #healthBarContainer2{ width: min(360px, 46vw); }
+    #playersHudRow.twoP{ gap: 12px; }
+    .hudDivider{ margin: 0 4px; min-height: 175px; }
+}
+
+.playerHud{
+    display:flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+/* Make per-player HUD a bit smaller on short screens */
+@media (max-height: 760px){
+    #playersHudRow{ gap: 14px; }
+    #healthBarContainer, #healthBarContainer2{ width: 320px; }
+    .slot{ width: 54px; height: 54px; }
+}
+
+        #weaponBar, #skillBar, #weaponBar2, #skillBar2 {
+            display: flex;
+            gap: 10px;
+        }
+
+        .slot {
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 0, 0, 0.6);
+            border: 2px solid #555;
+            border-radius: 8px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #777;
+            transition: all 0.2s;
+            box-shadow: 0 0 5px rgba(0,0,0,0.5);
+        }
+
+        .slot.active {
+            border-color: #fff;
+            transform: scale(1.1);
+            box-shadow: 0 0 15px rgba(255,255,255,0.4);
+            background: rgba(60, 60, 60, 0.9);
+        }
+
+        .slot .key-number {
+            position: absolute;
+            top: 2px;
+            left: 4px;
+            font-size: 0.7rem;
+            color: #aaa;
+        }
+
+        .slot .icon {
+            font-size: 0.9rem;
+            text-align: center;
+            line-height: 1.1;
+            margin-bottom: 2px;
+        }
+
+        .slot .level-indicator {
+            font-size: 0.7rem;
+            color: #FFD700;
+            margin-top: 2px;
+        }
+
+        /* ULTIMATE BAR */
+        #ultiContainer {
+            width: 400px;
+            height: 10px;
+            background: #333;
+            border: 1px solid #FFD700;
+            border-radius: 5px;
+            overflow: hidden;
+            margin-bottom: 5px;
+            position: relative;
+            box-shadow: 0 0 10px rgba(255, 215, 0, 0.3);
+        }
+        #ultiBar {
+            width: 0%;
+            height: 100%;
+            background: linear-gradient(90deg, #FFD700, #FFAB00);
+            transition: width 0.2s;
+            box-shadow: 0 0 10px #FFD700;
+        }
+        #ultiText {
+            position: absolute;
+            top: -20px;
+            width: 100%;
+            text-align: center;
+            font-size: 0.8rem;
+            color: #FFD700;
+            font-weight: bold;
+            text-shadow: 0 0 5px black;
+        }
+
+        /* Cooldown Overlay */
+        .cooldown-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 0%;
+            transition: height 0.1s linear;
+            background: rgba(0, 0, 0, 0.78);
+            background-image: linear-gradient(135deg,
+                rgba(255,255,255,0.14) 25%,
+                transparent 25%,
+                transparent 50%,
+                rgba(255,255,255,0.14) 50%,
+                rgba(255,255,255,0.14) 75%,
+                transparent 75%,
+                transparent);
+            background-size: 14px 14px;
+        }
+
+        .cooldown-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 0.85rem;
+            font-weight: 900;
+            color: #fff;
+            text-shadow: 0 2px 0 #000, 0 0 8px rgba(0,0,0,0.8);
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.25);
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.08s linear;
+        }
+
+/* HUD: Health Bar */
+        #healthBarContainer, #healthBarContainer2 {
+            position: relative;
+            width: 400px;
+            height: 20px;
+            background: #222;
+            border: 2px solid #555;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        @keyframes pvpWarnPulse {
+            0%   { box-shadow: 0 0 0 rgba(255,82,82,0.0); }
+            50%  { box-shadow: 0 0 18px rgba(255,82,82,0.85); }
+            100% { box-shadow: 0 0 0 rgba(255,82,82,0.0); }
+        }
+        .playerHud.pvp-warn #healthBarContainer,
+        .playerHud.pvp-warn #healthBarContainer2 {
+            border-color: #ff5252;
+            animation: pvpWarnPulse 0.8s ease-in-out infinite;
+        }
+        .playerHud.pvp-warn .slot {
+            border-color: #ff5252 !important;
+            box-shadow: 0 0 10px rgba(255,82,82,0.45);
+        }
+
+        .hpLabel{
+            display:inline-block;
+            padding: 1px 6px;
+            margin-right: 6px;
+            border-radius: 999px;
+            font-size: 0.65rem;
+            line-height: 1.2;
+            letter-spacing: 0.5px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.25);
+            box-shadow: 0 2px 8px rgba(0,0,0,0.45);
+        }
+        #healthBar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #4CAF50, #8BC34A);
+            transition: width 0.2s;
+        }
+        #shieldOverlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 191, 255, 0.5);
+            display: none;
+        }
+
+        /* BOSS HP BAR */
+        #bossHealthContainer {
+            position: absolute;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 600px;
+            height: 30px;
+            background: #222;
+            border: 3px solid #d32f2f;
+            border-radius: 4px;
+            overflow: hidden;
+            display: none; 
+            z-index: 10;
+        }
+        #bossHealthBar {
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, #d32f2f, #b71c1c);
+            transition: width 0.2s;
+        }
+        #bossName {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            line-height: 30px;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+        }
+
+        /* SCREENS */
+        #startScreen{
+            position: fixed;
+            inset: 0;
+            top: 0;
+            left: 0;
+            transform: none;
+            background: rgba(10,10,10,0.96);
+            padding: 22px 26px;
+            border-radius: 0;
+            border: 2px solid #4CAF50;
+            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.24);
+            display: flex;
+            flex-direction: column;
+            align-items: stretch;
+            justify-content: stretch;
+            width: 100vw;
+            height: 100vh;
+            box-sizing: border-box;
+            overflow: hidden;
+            z-index: 100;
+        }
+
+        #gameOverScreen, #victoryScreen {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: rgba(10, 10, 10, 0.95);
+            padding: 50px;
+            border-radius: 15px;
+            border: 2px solid #4CAF50;
+            text-align: center;
+            pointer-events: auto;
+            box-shadow: 0 0 30px rgba(76, 175, 80, 0.3);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-width: 400px;
+            z-index: 100;
+        }
+
+        h1 { margin: 0 0 20px; font-size: 3rem; color: #4CAF50; text-transform: uppercase; letter-spacing: 3px; }
+        h2 { margin: 0 0 15px; color: #ff4444; font-size: 2.5rem; }
+        p { color: #ccc; margin-bottom: 10px; font-size: 1.1rem; }
+        
+        .btn {
+            background: #4CAF50;
+            color: white;
+            border: none;
+            padding: 15px 40px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            border-radius: 5px;
+            margin-top: 30px;
+            transition: all 0.2s;
+            font-family: inherit;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+        .btn:hover { background: #45a049; transform: scale(1.05); box-shadow: 0 0 20px #4CAF50; }
+        @keyframes pvpReplayPulse {
+            0% { transform: translateX(-50%) scale(1); box-shadow: 0 0 14px rgba(24,255,106,0.25); }
+            50% { transform: translateX(-50%) scale(1.06); box-shadow: 0 0 24px rgba(24,255,106,0.55); }
+            100% { transform: translateX(-50%) scale(1); box-shadow: 0 0 14px rgba(24,255,106,0.25); }
+        }
+        #btnPvpReplay{
+            animation: pvpReplayPulse 1.2s ease-in-out infinite;
+        }
+
+        /* === Shop UI Fix: keep BUY buttons consistent === */
+        #shopModal .btn {
+            padding: 10px 12px;
+            font-size: 0.95rem;
+            margin-top: 10px;
+            width: 100%;
+            box-sizing: border-box;
+        }
+        #shopModal #btnShopContinue {
+            width: auto;
+            padding: 12px 16px;
+            font-size: 1rem;
+            margin-top: 0;
+        }
+        .hidden { display: none !important; }
+
+        .key-guide {
+            display: grid;
+            grid-template-columns: auto auto;
+            gap: 10px;
+            text-align: left;
+            margin-top: 20px;
+            font-size: 0.9rem;
+            color: #888;
+        }
+        .key { color: white; font-weight: bold; background: #333; padding: 2px 6px; border-radius: 4px; }
+        
+        #world-info {
+            position: absolute;
+            bottom: 10px;
+            left: 10px;
+            font-size: 0.8rem;
+            color: #555;
+        }
+
+    
+        /* === MAX Edition UX Tweaks === */
+        #weaponBar .weapon-slot, .weapon-slot, #weaponBar .slot { width: 60px; height: 60px; }
+        #settingsModal input[type="range"] { width: 100%; }
+        #settingsModal input[type="checkbox"] { transform: scale(1.2); }
+        #maxTopBar .btn:hover { transform: scale(1.03); box-shadow: 0 0 12px rgba(255,255,255,0.15); }
+
+
+        /* === Admin Code Modal (hidden) === */
+        #adminCodeModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:99999}
+        #adminCodeModal.hidden{display:none}
+        #adminCodePanel{pointer-events:auto;width:min(520px,92vw);background:#0b0f0c;border:2px solid rgba(24,255,106,.9);border-radius:14px;box-shadow:0 0 30px rgba(24,255,106,.25);padding:18px}
+        #adminCodePanel h3{margin:0 0 10px;color:#18ff6a;letter-spacing:2px}
+        #adminCodeInput{pointer-events:auto;width:100%;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#090b0a;color:#fff;font-size:16px;outline:none}
+        #adminCodeMsg{margin-top:10px;font-size:13px;min-height:18px;color:rgba(255,255,255,.8)}
+        /* === Assassin Lock Modal === */
+        #assassinLockModal{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.55);z-index:100002}
+        #assassinLockModal.hidden{display:none}
+        #assassinLockPanel{pointer-events:auto;width:min(520px,92vw);max-width:92vw;box-sizing:border-box;overflow:hidden;background:#0b0f0c;border:2px solid rgba(255,255,255,.18);border-radius:14px;box-shadow:0 0 30px rgba(0,0,0,.55);padding:16px}
+        #assassinLockPanel h3{margin:0 0 8px;color:#FFD54F;letter-spacing:1px}
+        #assassinLockText{color:rgba(255,255,255,.85);font-size:13px;line-height:1.35}
+        #assassinUnlockInput{pointer-events:auto;display:block;width:100%;max-width:100%;box-sizing:border-box;padding:12px 14px;border-radius:10px;border:1px solid rgba(255,255,255,.12);background:#090b0a;color:#fff;font-size:16px;outline:none;margin-top:10px}
+        #assassinUnlockRow{margin-top:10px;display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap}
+        #assassinUnlockRow .btn{margin-top:0;padding:8px 12px;font-size:0.9rem}
+        #assassinUnlockMsg{margin-top:8px;font-size:12px;min-height:18px;color:rgba(255,255,255,.8)}
+
+
+        /* === Copyright Badge === */
+        #copyrightBadge{
+            position:fixed;
+            top:14px;
+            right:14px;
+            z-index:100000;
+            padding:6px 8px;
+            border-radius:10px;
+            border:1px solid rgba(24,255,106,.22);
+            background:rgba(0,0,0,.18);
+            color:rgba(24,255,106,.70);
+            font-size:11px;
+            letter-spacing:0.6px;
+            user-select:none;
+            pointer-events:none;
+            backdrop-filter: blur(6px);
+        }
+
+
+        /* === VietKey Confirm Modal === */
+        #vietkeyModal{position:fixed; inset:0; display:flex; align-items:center; justify-content:center; background:rgba(0,0,0,.55); z-index:100001;}
+        #vietkeyModal.hidden{display:none;}
+        #vietkeyPanel{width:min(560px,92vw); background:#0b0f0c; border:2px solid rgba(24,255,106,.55); border-radius:14px;
+                      box-shadow:0 0 30px rgba(24,255,106,.22); padding:16px 18px;}
+        .vietkeyTip{margin-top:14px; font-size:12px; color:rgba(255,255,255,.78); text-align:center;}
+        .vietkeyTip b{color:#18ff6a;}
+        /* === PvP Loadout Modal (in-game) === */
+        #pvpLoadoutModal{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:rgba(0,0,0,.82);z-index:335;pointer-events:auto}
+        #pvpLoadoutModal.hidden{display:none}
+
+        /* === Inline Style Cleanup (Step 1) === */
+        #fpsCounter.hud-fps{ font-size: 1.0rem; font-weight: 800; color:#FFD700; }
+        #goldVal.hud-gold{ color:#FFD700; }
+        .hud-text.hud-enemy{ font-size: 0.9rem; color: #aaa; }
+        .hud-slot-title{
+            position: absolute; top: 0; left: 0; width: 100%;
+            text-align: center; line-height: 20px; font-size: 0.7rem;
+            font-weight: bold; text-shadow: 1px 1px 0 #000;
+        }
+        #skill-clone, #skill2-clone{ border-color: #29B6F6; color: #29B6F6; }
+        #skill-stealth, #skill2-stealth{ border-color: #AB47BC; color: #AB47BC; }
+        #skill-vampirism, #skill2-vampirism{ border-color: #FF5252; color: #FF5252; }
+
+        #btnSettingsStart{
+            position:absolute; top:14px; right:14px; z-index:160;
+            margin-top:0; padding:10px 14px; font-size:0.9rem;
+            background:#222; border:1px solid rgba(255,255,255,0.18);
+            box-shadow:0 0 18px rgba(255,255,255,0.08);
+        }
+
+        #finalWave, #victoryWave{ color: yellow; }
+        #finalScore, #victoryScore{ color: white; font-weight: bold; font-size: 2rem; }
+        #restartBtn{ background: #d32f2f; }
+        #menuBtnGO{ background:#333; margin-top:12px; }
+        #victoryScreen h2{ color:#4CAF50; }
+        .victory-sub{ margin-top:8px; color:#aaa; font-size:0.95rem; }
+        #victoryBestScore, #victoryBestWave{ color:#4CAF50; font-weight:800; }
+        #victoryRestartBtn{ background:#18ff6a; color:#041a0c; }
+        #victoryEndlessBtn{ background:#FFD54F; color:#1b1300; margin-top:12px; }
+        #victoryMenuBtn{ background:#333; margin-top:12px; }
+
+        #maxTopBar{
+            position:absolute; top:20px; left:50%;
+            transform:translateX(-50%); display:flex; gap:10px;
+            align-items:center; z-index:200; pointer-events:auto;
+        }
+        #btnPause, #btnSettings{
+            margin-top:0; padding:10px 14px; font-size:0.9rem;
+            background:#333; border:1px solid #555;
+        }
+        #btnSaveQuit{
+            margin-top:0; padding:10px 14px; font-size:0.9rem;
+            background:#2b2b2b; border:1px solid #777;
+        }
+        #btnPvpReplay{
+            position:absolute; top:54px; left:50%;
+            transform:translateX(-50%); margin-top:0; padding:10px 14px;
+            font-size:0.9rem; background:#18ff6a; color:#041a0c;
+            border:1px solid #1b5; box-shadow:0 0 18px rgba(24,255,106,0.35);
+            display:none;
+        }
+
+        #settingsModal{
+            position:absolute; inset:0; background:rgba(0,0,0,0.75);
+            z-index:300; display:flex; align-items:center; justify-content:center;
+            pointer-events:auto;
+        }
+        .settings-panel{
+            width:min(620px,92vw); background:rgba(10,10,10,0.95);
+            border:2px solid #4CAF50; border-radius:14px; padding:22px;
+            box-shadow:0 0 30px rgba(76,175,80,0.25);
+        }
+        .settings-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .settings-title{ font-size:1.4rem; font-weight:800; color:#4CAF50; letter-spacing:1px; }
+        .btn-close-settings{ margin-top:0; padding:10px 14px; font-size:0.9rem; background:#d32f2f; }
+        .settings-body{ margin-top:16px; display:grid; grid-template-columns:1fr; gap:14px; color:#ddd; }
+        .settings-row{ display:grid; grid-template-columns:160px 1fr 70px; gap:10px; align-items:center; }
+        .settings-value{ text-align:right; color:#FFD700; font-weight:700; }
+        .settings-checks{ display:flex; gap:16px; flex-wrap:wrap; }
+        .settings-check{ display:flex; gap:8px; align-items:center; }
+        .settings-progress{
+            padding:10px 12px; background:rgba(255,255,255,0.05);
+            border:1px solid rgba(255,255,255,0.12); border-radius:10px;
+        }
+        .settings-progress-title{ font-weight:800; margin-bottom:6px; color:#FFD700; }
+        .settings-progress-grid{ display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+        #bestScore, #bestWave{ color:#4CAF50; font-weight:800; }
+        .settings-progress-actions{ margin-top:10px; display:flex; gap:10px; flex-wrap:wrap; }
+        .btn-save-now{ margin-top:0; padding:10px 14px; font-size:0.9rem; }
+        .btn-reset-save{ margin-top:0; padding:10px 14px; font-size:0.9rem; background:#444; border:1px solid #666; }
+        .settings-hotkeys{ font-size:0.9rem; color:#888; line-height:1.4; }
+
+        #shopModal{
+            position:absolute; inset:0; background:rgba(0,0,0,0.78);
+            z-index:320; display:flex; align-items:center; justify-content:center;
+            pointer-events:auto;
+        }
+        .shop-panel{
+            width:min(760px,94vw); background:rgba(10,10,10,0.96);
+            border:2px solid #FFD700; border-radius:16px; padding:22px;
+            box-shadow:0 0 30px rgba(255,215,0,0.18);
+        }
+        .shop-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .shop-title{ font-size:1.35rem; font-weight:900; color:#FFD700; letter-spacing:1px; }
+        .shop-meta{ display:flex; gap:10px; align-items:center; flex-wrap:wrap; justify-content:flex-end; }
+        .shop-gold{ font-weight:900; color:#FFD700; }
+        .shop-next{ color:#aaa; font-weight:700; }
+        .shop-next span{ color:#4CAF50; }
+        .shop-hint{ margin-top:14px; color:#cfcfcf; font-size:0.95rem; line-height:1.35; }
+        .shop-cards{ margin-top:16px; display:grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap:12px; }
+        .shopCard, .shop-card{ background:rgba(255,255,255,0.04); border:1px solid rgba(255,255,255,0.12); border-radius:14px; padding:14px; }
+        .shopCard.shop-card--soft, .shop-card--soft{ background:rgba(255,255,255,0.06); }
+        .shopCard.shop-card--heal, .shop-card--heal{ background:rgba(76,175,80,0.10); border:1px solid rgba(76,175,80,0.35); }
+        .shop-card-title{ font-weight:900; color:#fff; }
+        .shop-card-desc{ margin-top:6px; color:#999; font-size:0.9rem; }
+        .shop-card-meta{ margin-top:8px; color:#bbb; font-size:0.85rem; }
+        .shop-card-meta .value{ color:#FFD700; font-weight:900; }
+        .shop-buy-btn{ margin-top:10px; width:100%; padding:10px 12px; font-size:0.95rem; }
+        .shop-footer{ margin-top:16px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+        .shop-footer-note{ font-size:0.9rem; color:#888; }
+        .btn-shop-continue{ margin-top:0; padding:12px 16px; }
+        .opacity-90{ opacity:0.9; }
+
+        .weapon-level{ font-size:0.6rem; }
+        #startScreen .skillKey{ box-shadow: 0 0 14px var(--skill-glow, transparent); }
+
+        .btn-dark{ background:#333; }
+        .btn-gold{ background:#FFD54F; color:#1b1300; }
+        .btn-green{ background:#18ff6a; color:#041a0c; }
+        .vk-header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+        .vk-title{ font-weight:900; color:#18ff6a; letter-spacing:2px; }
+        .vk-sub{ opacity:0.8; font-size:12px; }
+        .vk-body{ margin-top:10px; color:#ddd; line-height:1.4; }
+        .vk-actions{ margin-top:14px; display:flex; gap:10px; justify-content:flex-end; }
+        #pvpLoadoutPanel{width:min(1240px,96vw);max-height:min(92vh,900px);overflow:auto;background:linear-gradient(180deg,rgba(9,14,12,.98),rgba(7,10,9,.98));border:2px solid rgba(76,175,80,.55);border-radius:16px;box-shadow:0 26px 80px rgba(0,0,0,.65),0 0 24px rgba(76,175,80,.16);padding:16px 16px 14px}
+        .pvpLoadTop{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap}
+        .pvpLoadTitleMain{font-size:1.25rem;font-weight:900;color:#18ff6a;letter-spacing:.8px}
+        .pvpLoadSub{margin-top:4px;font-size:.88rem;color:rgba(255,255,255,.78)}
+        .pvpLoadRoundHint{font-size:.78rem;color:rgba(255,255,255,.55)}
+        .pvpLoadGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+        .pvpSideCard{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.14);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:8px}
+        .pvpSideHead{font-size:1rem;font-weight:900;color:#FFD54F;letter-spacing:.5px}
+        .pvpFieldLabel{font-size:.8rem;font-weight:800;color:rgba(255,255,255,.82);margin-top:2px}
+        .pvpSideCard .modeSelect{width:100%;max-width:none;padding:9px 10px;border-radius:10px;border:1px solid rgba(255,255,255,.16);background:rgba(0,0,0,.3);color:#eee;font-size:.88rem}
+        .pvpStatBox,.pvpItemsInfo{background:rgba(0,0,0,.28);border:1px solid rgba(255,255,255,.12);border-radius:10px;padding:9px 10px}
+        .pvpStatTitle{font-size:.9rem;font-weight:900;color:#9be7b0}
+        .pvpStatDesc{margin-top:3px;font-size:.78rem;color:rgba(255,255,255,.78);line-height:1.3}
+        .pvpStatMuted{font-size:.78rem;color:rgba(255,255,255,.45)}
+        .pvpStatList{margin:6px 0 0 16px;padding:0;font-size:.78rem;color:rgba(255,255,255,.88);line-height:1.28}
+        .pvpItemBlock{padding-top:7px;margin-top:7px;border-top:1px dashed rgba(255,255,255,.16)}
+        .pvpItemBlock:first-child{padding-top:0;margin-top:0;border-top:none}
+        .pvpLoadActions{margin-top:12px;display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap}
+        #pvpLiveReset{margin-top:0;background:#2f3640}
+        #pvpLiveConfirm{margin-top:0;background:#18ff6a;color:#041a0c}
+        @media (max-width: 980px){
+            .pvpLoadGrid{grid-template-columns:1fr}
+        }
+
+
+        /* === UI Polish v25: Weapon & Skill Cards === */
+
+        /* Layout spacing */
+        #weaponBar, #skillBar { gap: 12px; }
+
+        /* Shared card base (skills + weapons) */
+        .slot, .weapon-slot {
+            width: 62px;
+            height: 62px;
+            border-radius: 14px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            overflow: hidden;
+            cursor: default;
+            user-select: none;
+
+            /* Glass + depth */
+            background:
+                radial-gradient(circle at 30% 22%, rgba(255,255,255,0.16), rgba(255,255,255,0) 48%),
+                linear-gradient(180deg, rgba(14, 16, 22, 0.92), rgba(0, 0, 0, 0.72));
+            border: 2px solid rgba(255,255,255,0.14);
+            box-shadow:
+                0 12px 22px rgba(0,0,0,0.55),
+                inset 0 0 0 1px rgba(255,255,255,0.06);
+            backdrop-filter: blur(6px);
+            transition: transform 120ms ease, box-shadow 120ms ease, border-color 120ms ease, filter 120ms ease;
+        }
+
+        /* Shine + subtle scanlines */
+        .slot::before, .weapon-slot::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.12), rgba(255,255,255,0) 55%);
+            opacity: 0.85;
+            pointer-events: none;
+        }
+        .slot::after, .weapon-slot::after {
+            content: "";
+            position: absolute;
+            left: -50%;
+            top: -50%;
+            width: 200%;
+            height: 200%;
+            background: repeating-linear-gradient(
+                0deg,
+                rgba(255,255,255,0.045) 0px,
+                rgba(255,255,255,0.045) 1px,
+                rgba(0,0,0,0) 4px,
+                rgba(0,0,0,0) 7px
+            );
+            opacity: 0.08;
+            transform: rotate(12deg);
+            pointer-events: none;
+        }
+
+        /* Micro hover (desktop) */
+        @media (hover:hover) {
+            .slot:hover, .weapon-slot:hover {
+                transform: translateY(-1px) scale(1.04);
+                box-shadow:
+                    0 16px 28px rgba(0,0,0,0.62),
+                    inset 0 0 0 1px rgba(255,255,255,0.08);
+            }
+        }
+
+        /* Key label */
+        .slot .key-number, .weapon-slot .key-number {
+            position: absolute;
+            top: 4px;
+            left: 5px;
+            font-size: 11px;
+            letter-spacing: 0.4px;
+            padding: 2px 6px;
+            border-radius: 8px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.78);
+            text-shadow: 0 1px 0 rgba(0,0,0,0.55);
+        }
+
+        /* Icon text */
+        .slot .icon, .weapon-slot .icon {
+            font-size: 12px;
+            line-height: 1.05;
+            text-align: center;
+            padding: 0 4px;
+            color: rgba(255,255,255,0.88);
+            text-shadow: 0 2px 0 rgba(0,0,0,0.38);
+        }
+
+        /* Level chip */
+        .slot .level-indicator, .weapon-slot .level-indicator {
+            position: absolute;
+            bottom: 4px;
+            right: 5px;
+            font-size: 10px;
+            padding: 1px 6px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.55);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: #FFD54F;
+            text-shadow: 0 1px 0 rgba(0,0,0,0.55);
+        }
+
+        /* Cooldown overlay looks like tinted glass */
+        .cooldown-overlay {
+            position: absolute;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            height: 0%;
+            background: linear-gradient(180deg, rgba(0,0,0,0.08), rgba(0,0,0,0.78));
+            border-top: 1px solid rgba(255,255,255,0.08);
+            pointer-events: none;
+        }
+
+        .cooldown-text {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 11px;
+            font-weight: 900;
+            padding: 2px 7px;
+            border-radius: 999px;
+            background: rgba(0,0,0,0.60);
+            border: 1px solid rgba(255,255,255,0.12);
+            color: rgba(255,255,255,0.92);
+            text-shadow: 0 1px 0 rgba(0,0,0,0.6);
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        /* Active weapon slot (selected) */
+        .weapon-slot.active {
+            transform: translateY(-1px) scale(1.12);
+            border-color: rgba(255,255,255,0.92) !important;
+            filter: drop-shadow(0 0 10px currentColor);
+            box-shadow:
+                0 18px 34px rgba(0,0,0,0.68),
+                inset 0 0 0 1px rgba(255,255,255,0.10);
+        }
+
+        /* Skill ready pulse (when cooldown is done) */
+        .slot.ready {
+            border-color: currentColor;
+            box-shadow:
+                0 12px 24px rgba(0,0,0,0.58),
+                inset 0 0 0 1px rgba(255,255,255,0.08);
+            animation: uiReadyPulse 1.15s ease-in-out infinite;
+        }
+        @keyframes uiReadyPulse {
+            0%, 100% { filter: drop-shadow(0 0 0px transparent); }
+            50% { filter: drop-shadow(0 0 10px currentColor); }
+        }
+
+        /* Skill on cooldown slightly muted */
+        .slot.cooling { opacity: 0.92; }
+
+        /* Mobile scale */
+        @media (max-width: 560px) {
+            .slot, .weapon-slot { width: 54px; height: 54px; border-radius: 12px; }
+            .slot .icon, .weapon-slot .icon { font-size: 11px; }
+            .slot .key-number, .weapon-slot .key-number { font-size: 10px; padding: 1px 5px; }
+            .slot .level-indicator, .weapon-slot .level-indicator { font-size: 9px; padding: 1px 5px; }
+        }
+
+    
+
+        /* === Start Screen Fullscreen Layout (v34) === */
+        #startScreen{
+            width: 100vw;
+            height: 100vh;
+            aspect-ratio: auto;
+            padding: 22px 26px;
+            align-items: stretch;
+            justify-content: stretch;
+            gap: 0;
+        }
+        #startScreen .start16{
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+        #startScreen .startTop{
+            display:flex;
+            gap:16px;
+            align-items:flex-start;
+            justify-content:space-between;
+        }
+        #startScreen .startTitleWrap{
+            text-align:left;
+            padding: 6px 0 0 4px;
+        }
+        #startScreen .startTitle{
+            font-size: clamp(24px, 3.2vw, 46px);
+            font-weight: 900;
+            letter-spacing: 4px;
+            color: #4CAF50;
+            text-transform: uppercase;
+            text-shadow: 0 0 18px rgba(76,175,80,0.25);
+            line-height: 1.05;
+        }
+        #startScreen .startSubtitle{
+            margin-top: 6px;
+            color: #9be7b0;
+            opacity: 0.9;
+            font-size: clamp(12px, 1.2vw, 14px);
+            text-align:left;
+        }
+        #startScreen .startHints{
+            text-align:left;
+            max-width: 520px;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 12px;
+            padding: 10px 12px;
+        }
+        
+        /* Start screen SETTINGS button: keep it visible (not covered by hints/logo) */
+        #btnSettingsStart{
+            position: absolute !important;
+            top: 18px !important;
+            right: 560px !important; /* sits in the empty top-right area left of the hints box */
+            z-index: 220 !important;
+        }
+        @media (max-width: 1280px){
+            #btnSettingsStart{ right: 360px !important; }
+        }
+        @media (max-width: 980px){
+            #btnSettingsStart{ right: 14px !important; top: 74px !important; }
+        }
+#startScreen .hintLine{
+            font-size: clamp(12px, 1.15vw, 14px);
+            color: #ccc;
+            margin: 3px 0;
+            line-height: 1.25;
+        }
+        #startScreen .hintLine b{ color:#fff; }
+        #startScreen .hintLine.warn{ color:#ff7777; }
+        #startScreen .hintLine.danger{ color:#ff4aa6; }
+
+        #startScreen .startMain{
+            flex: 1;
+            display: grid;
+            grid-template-columns: 0.95fr 1.35fr;
+            gap: 14px;
+            min-height: 0;
+        }
+        #startScreen .startLeft,
+        #startScreen .startRight{
+            background: rgba(0,0,0,0.22);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            padding: 12px;
+            min-height: 0;
+        }
+        #startScreen .panelTitle{
+            font-weight: 900;
+            letter-spacing: 0.7px;
+            color: #FFD700;
+            font-size: 14px;
+            margin-bottom: 10px;
+            text-align: left;
+        }
+        #startScreen .systemList{
+            display:flex;
+            flex-direction:column;
+            gap: 10px;
+            overflow:auto;
+            padding-right: 4px;
+            max-height: calc(100% - 140px);
+        }
+        #startScreen .sysItem{
+            display:grid;
+            grid-template-columns: 18px 86px 1fr;
+            align-items:center;
+            gap: 10px;
+            padding: 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(10,10,10,0.35);
+            cursor:pointer;
+            transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
+            text-align:left;
+        }
+        #startScreen .sysItem:hover{
+            transform: translateY(-1px);
+            border-color: rgba(76,175,80,0.35);
+            box-shadow: 0 0 16px rgba(76,175,80,0.10);
+        }
+        #startScreen .sysItem.active{
+            border-color: rgba(76,175,80,0.65);
+            box-shadow: 0 0 22px rgba(76,175,80,0.22);
+            background: rgba(20,20,20,0.55);
+        }
+        #startScreen .sysItem input{
+            transform: translateY(1px);
+        }
+        #startScreen .sysMini{
+            width: 84px;
+            height: 56px;
+            border-radius: 10px;
+            background: rgba(0,0,0,0.25);
+            border: 1px solid rgba(255,255,255,0.10);
+        }
+        #startScreen .sysName{
+            font-weight: 900;
+            font-size: 15px;
+            color:#eaeaea;
+        }
+        #startScreen .sysDesc{
+            font-size: 12px;
+            color:#aaa;
+            margin-top: 2px;
+            line-height: 1.2;
+        }
+        #startScreen .leftFootNote{
+            margin-top: 10px;
+            font-size: 12px;
+            color:#8fdba6;
+            text-align:left;
+            opacity: 0.9;
+        }
+        #startScreen .keyGuideWide{
+            margin-top: 10px;
+            display:grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px 12px;
+            align-items:center;
+        }
+        #startScreen .kg{
+            display:flex;
+            gap:10px;
+            align-items:center;
+            justify-content:flex-start;
+            color:#cfcfcf;
+            font-size: 12px;
+        }
+        #startScreen .kg .key{
+            background: rgba(255,255,255,0.08);
+            border: 1px solid rgba(255,255,255,0.16);
+            border-radius: 7px;
+            padding: 4px 8px;
+            font-weight: 800;
+            color:#fff;
+            min-width: 56px;
+            text-align:center;
+        }
+
+        #startScreen .startRight{
+            display:flex;
+            flex-direction:column;
+            gap: 12px;
+        }
+        #startScreen .previewWrap{
+            background: rgba(0,0,0,0.18);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 10px;
+        }
+        #startScreen #systemPreview{
+            width: 100%;
+            height: auto;
+            border-radius: 14px;
+            background: radial-gradient(circle at 50% 30%, rgba(255,255,255,0.06), rgba(0,0,0,0.40) 65%);
+            border: 1px solid rgba(255,255,255,0.10);
+        }
+        #startScreen .previewMeta{
+            display:flex;
+            justify-content:space-between;
+            align-items:center;
+            margin-top: 8px;
+            gap: 10px;
+            flex-wrap:wrap;
+        }
+        #startScreen .sysTagline{
+            font-weight: 800;
+            color:#eaeaea;
+            font-size: 13px;
+            opacity: 0.95;
+            text-align:left;
+        }
+        #startScreen .progressLine{
+            font-size: 12px;
+            color:#bbb;
+            opacity: 0.9;
+        }
+        #startScreen .progressLine span{ color:#4CAF50; font-weight:900; }
+
+        #startScreen .skillsWrap{
+            flex:1;
+            background: rgba(0,0,0,0.18);
+            border: 1px solid rgba(255,255,255,0.08);
+            border-radius: 14px;
+            padding: 10px;
+            min-height: 0;
+            overflow:auto;
+        }
+        #startScreen .systemDetails{
+            display:flex;
+            flex-direction:column;
+            gap: 10px;
+        }
+        #startScreen .sysQuickStats{
+            display:flex;
+            flex-wrap:wrap;
+            gap: 6px;
+            padding: 6px;
+            border-radius: 10px;
+            border: 1px solid rgba(255,255,255,0.08);
+            background: rgba(0,0,0,0.25);
+        }
+        #startScreen .sysStatChip{
+            font-size: 11px;
+            color:#d8d8d8;
+            padding: 4px 8px;
+            border-radius: 999px;
+            border: 1px solid rgba(255,255,255,0.12);
+            background: rgba(255,255,255,0.04);
+            letter-spacing: 0.2px;
+            white-space: nowrap;
+        }
+        #startScreen .sysStatChip b{
+            color:#fff;
+        }
+        #startScreen .skillCard{
+            display:grid;
+            grid-template-columns: 46px 1fr;
+            gap: 10px;
+            align-items:flex-start;
+            padding: 10px 10px;
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.10);
+            background: rgba(10,10,10,0.35);
+        }
+        #startScreen .skillKey{
+            width: 46px;
+            height: 46px;
+            border-radius: 12px;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            font-weight: 1000;
+            color:#fff;
+            letter-spacing: 0.5px;
+            border: 1px solid rgba(255,255,255,0.18);
+            background: rgba(255,255,255,0.06);
+        }
+        #startScreen .skillName{
+            font-weight: 900;
+            color:#fff;
+            font-size: 14px;
+        }
+        #startScreen .skillDesc{
+            color:#cfcfcf;
+            font-size: 12px;
+            margin-top: 3px;
+            line-height: 1.25;
+        }
+        #startScreen .skillStats{
+            margin-top: 6px;
+            font-size: 12px;
+            color:#9bb3ff;
+            opacity: 0.95;
+        }
+
+        #startScreen .startBottom{
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+        #startScreen .startBtnBig{
+            font-size: 1.35rem;
+            padding: 14px 54px;
+            border-radius: 14px;
+            box-shadow: 0 0 24px rgba(76,175,80,0.25);
+        }
+
+
+        #startScreen .saveRow{
+            display:grid;
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            align-items:center;
+            gap: 12px;
+            margin: 10px 0 12px;
+            pointer-events: auto;
+        }
+        #startScreen .saveRow .btn{
+            width: 100%;
+        }
+        #startScreen .saveBtnContinue{
+            background: linear-gradient(180deg, rgba(0,200,255,0.35), rgba(0,200,255,0.10));
+            border: 1px solid rgba(0,200,255,0.45);
+            box-shadow: 0 0 26px rgba(0,200,255,0.20);
+        }
+        #startScreen .saveBtnContinue:hover{
+            box-shadow: 0 0 34px rgba(0,200,255,0.32);
+            transform: translateY(-1px);
+        }
+        #startScreen .saveBtnClear{
+            font-size: 0.98rem;
+            padding: 11px 18px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.18);
+            box-shadow: 0 0 18px rgba(255,255,255,0.08);
+            opacity: 0.92;
+        }
+        #startScreen .saveBtnClear:hover{
+            opacity: 1;
+            transform: translateY(-1px);
+        }
+        @media (max-width: 900px){
+            #startScreen{ padding: 14px; }
+            #startScreen .startMain{ grid-template-columns: 1fr; }
+            #startScreen .systemList{ max-height: none; }
+            #startScreen .keyGuideWide{ grid-template-columns: 1fr 1fr; }
+        }
+
+        /* === Start Screen 16:9 Layout Hotfix (v28) ===
+           - Widen frame a bit
+           - Give Skills panel more real estate (flex column on right)
+         */
+        #startScreen{
+            width: 100vw;
+            height: 100vh;
+            padding: 16px;
+        }
+        #startScreen .startMain{
+            grid-template-columns: 0.90fr 1.45fr;
+            gap: 16px;
+        }
+        #startScreen .startRight{
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            height: 100%;
+            min-height: 0;
+        }
+        #startScreen .previewWrap{
+            flex: 0 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        #startScreen #systemPreview{
+            max-height: 44vh;
+        }
+        #startScreen .skillsWrap{
+            flex: 1 1 auto;
+            min-height: 0;
+            overflow: auto;
+            padding: 12px;
+        }
+        #startScreen .systemDetails{
+            padding-bottom: 10px;
+        }
+
+        /* === Start Screen 16:9 Layout Hotfix (v29) ===
+           - Move Deploy + Best stats to LEFT column
+           - Let Skills panel extend further down
+         */
+        #startScreen .startLeft{
+            display:flex;
+            flex-direction:column;
+            gap: 10px;
+        }
+        #startScreen .systemList{
+            flex: 1 1 auto;
+            max-height: none;
+            overflow:auto;
+        }
+        #startScreen .leftActions{
+            margin-top: 10px;
+            display:flex;
+            flex-direction:column;
+            gap: 10px;
+        }
+        #startScreen .leftActions .startBtnBig{
+            width: 100%;
+            padding: 14px 20px;
+            font-size: 1.18rem;
+            border-radius: 14px;
+        }
+        #startScreen .leftStats{
+            font-size: 12px;
+            color:#bbb;
+            text-align:center;
+            opacity: 0.95;
+        }
+        #startScreen .leftStats span{ color:#4CAF50; font-weight:900; }
+        #startScreen #systemPreview{
+            width: min(100%, calc(46vh * 16 / 9));
+            height: auto;
+            max-height: 46vh;
+            margin: 0 auto;
+        }
+
+
+
+        /* === Start UI v30: Equalize Preview + Skills ===
+           START UI v30: Equalize Preview (blue) + Skills (yellow)
+           - Preview & skill panels share 50/50 height
+           - Remove canvas max-height cap
+           - Keep Best Score/Best Wave only in left panel
+         */
+        #startScreen .startRight{
+            display:flex;
+            flex-direction:column;
+            gap:12px;
+            min-height:0;
+        }
+        #startScreen .previewWrap{
+            flex: 1 1 0 !important;
+            min-height:0;
+            display:flex;
+            flex-direction:column;
+            gap:10px;
+        }
+        #startScreen #systemPreview{
+            flex: 1 1 0 !important;
+            width:100%;
+            height:100% !important;
+            max-height:none !important;
+        }
+        #startScreen .previewMeta{
+            margin-top:auto;
+        }
+        #startScreen .skillsWrap{
+            flex: 1 1 0 !important;
+            min-height:0;
+            overflow:auto;
+        }
+
+
+        /* === Start Mode Selector (Hard/Easy, 1P/2P) === */
+        #startScreen{ overflow-y:auto; overscroll-behavior: contain; }
+        #startScreen .start16{ height:auto; min-height:100%; }
+        #startScreen .modeBox{
+            margin-top: 10px;
+            background: rgba(0,0,0,0.20);
+            border: 1px solid rgba(255,255,255,0.10);
+            border-radius: 14px;
+            padding: 10px 10px 8px;
+        }
+        #startScreen .modeTitle{
+            font-weight: 900;
+            letter-spacing: 0.7px;
+            color: #9be7b0;
+            font-size: 12px;
+            margin-bottom: 8px;
+            text-align:left;
+            opacity: 0.95;
+        }
+        #startScreen .modeRow{
+            display:flex;
+            align-items:center;
+            justify-content:space-between;
+            gap:10px;
+            margin: 6px 0;
+        }
+        #startScreen .modeLabel{
+            font-size: 12px;
+            color:#bbb;
+            min-width: 78px;
+            text-align:left;
+        }
+        #startScreen .modeSeg{
+            display:flex;
+            gap:8px;
+            flex-wrap:wrap;
+            justify-content:flex-end;
+        }
+        #startScreen .modeSeg label{
+            display:flex;
+            align-items:center;
+            gap:6px;
+            padding: 6px 10px;
+            border-radius: 12px;
+            background: rgba(255,255,255,0.06);
+            border: 1px solid rgba(255,255,255,0.10);
+            cursor: pointer;
+            user-select:none;
+        }
+        #startScreen .modeSeg input{
+            accent-color: #4CAF50;
+        }
+        #startScreen .modeSeg span{
+            font-size: 12px;
+            color:#eee;
+            font-weight: 800;
+            letter-spacing: 0.4px;
+        }
+        #startScreen .modeSelect{
+            width: 100%;
+            max-width: 230px;
+            padding: 7px 10px;
+            border-radius: 12px;
+            background: rgba(0,0,0,0.25);
+            color: #eee;
+            border: 1px solid rgba(255,255,255,0.14);
+            outline: none;
+            font-family: inherit;
+        }
+        #startScreen .modeNote{
+            margin-top: 6px;
+            font-size: 11px;
+            color: rgba(255,255,255,0.75);
+            text-align:left;
+            line-height: 1.25;
+        }
+        #startScreen .pvpLoadoutWrap{
+            width:100%;
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:8px;
+        }
+        #startScreen .pvpLoadCard{
+            background:rgba(255,255,255,0.04);
+            border:1px solid rgba(255,255,255,0.10);
+            border-radius:10px;
+            padding:8px;
+            display:flex;
+            flex-direction:column;
+            gap:6px;
+        }
+        #startScreen .pvpLoadTitle{
+            font-size:11px;
+            font-weight:900;
+            color:#9be7b0;
+            letter-spacing:0.6px;
+        }
+        #startScreen .pvpItemsGrid{
+            display:grid;
+            grid-template-columns:1fr;
+            gap:6px;
+        }
+        #startScreen .pvpLoadCard .modeSelect{
+            max-width:none;
+            width:100%;
+            font-size:11px;
+            padding:6px 8px;
+        }
+        @media (max-height: 760px){
+            #startScreen .startMain{ flex: 0 0 auto; }
+        }
+
+        /* === Start Screen Responsive Optimize (v35) === */
+        #startScreen .startMain{
+            grid-template-columns: minmax(360px, 1fr) minmax(520px, 1.35fr);
+        }
+        @media (min-width: 1600px){
+            #startScreen{ padding: 22px 30px; }
+            #startScreen .startMain{
+                grid-template-columns: minmax(440px, 1fr) minmax(760px, 1.5fr);
+                gap: 18px;
+            }
+            #startScreen .systemList{ max-height: none; }
+        }
+        @media (max-width: 1200px){
+            #startScreen .startMain{
+                display:flex;
+                flex-direction:column;
+                gap: 12px;
+            }
+            #startScreen .startLeft,
+            #startScreen .startRight{ width: 100%; }
+            #startScreen .systemList{ max-height: 40vh; }
+            #startScreen .previewWrap{ max-height: 40vh; flex: 0 0 auto !important; }
+            #startScreen #systemPreview{ max-height: 32vh; height: auto !important; }
+            #startScreen .skillsWrap{ max-height: 36vh; flex: 0 0 auto !important; }
+        }
+        @media (max-height: 820px){
+            #startScreen{ padding: 12px 14px; }
+            #startScreen .startTop{ flex-direction:column; gap:10px; align-items:flex-start; }
+            #startScreen .startHints{ max-width: 100%; }
+            #startScreen .keyGuideWide{ grid-template-columns: 1fr 1fr; }
+            #startScreen .systemList{ max-height: 48vh; }
+            #btnSettingsStart{ top: 12px !important; right: 14px !important; }
+        }
+        @media (max-height: 800px){
+            #startScreen .leftFootNote{ display:none; }
+            #startScreen .keyGuideWide{ display:none; }
+            #startScreen .modeNote{ display:none; }
+            #startScreen .modeBox{ margin-top: 8px; padding: 8px 8px 6px; }
+            #startScreen .modeRow{ margin: 4px 0; }
+            #startScreen .leftActions{ gap: 6px; margin-top: 8px; }
+            #startScreen .saveRow{ margin: 4px 0 6px; gap: 8px; }
+            #startScreen .startBtnBig{ font-size: 1.02rem; padding: 9px 14px; border-radius: 12px; }
+            #startScreen .leftActions .startBtnBig{ padding: 9px 14px; font-size: 1.02rem; }
+            #startScreen .systemList{ max-height: 70vh; }
+        }
+        @media (max-height: 760px){
+            #startScreen .startTop{ gap: 8px; }
+            #startScreen .startTitle{ font-size: clamp(22px, 2.6vw, 34px); letter-spacing: 3px; }
+            #startScreen .startSubtitle{ margin-top: 4px; font-size: 12px; }
+            #startScreen .startHints{ padding: 6px 8px; }
+            #startScreen .hintLine{ font-size: 11px; line-height: 1.15; margin: 2px 0; }
+            #startScreen .startMain{ gap: 10px; }
+            #startScreen .startLeft,
+            #startScreen .startRight{ padding: 10px; }
+            #startScreen .startLeft{ gap: 8px; }
+            #startScreen .systemList{ max-height: 74vh; }
+            #startScreen .sysItem{ padding: 8px; grid-template-columns: 18px 74px 1fr; gap: 8px; }
+            #startScreen .sysMini{ width: 72px; height: 48px; }
+            #startScreen .sysName{ font-size: 14px; }
+            #startScreen .sysDesc{ font-size: 11px; }
+            #startScreen .leftFootNote{ margin-top: 6px; font-size: 11px; }
+            #startScreen .keyGuideWide{ margin-top: 6px; gap: 6px 10px; }
+            #startScreen .kg{ font-size: 11px; gap: 8px; }
+            #startScreen .kg .key{ min-width: 46px; padding: 3px 6px; font-size: 10px; border-radius: 6px; }
+            #startScreen .modeBox{ margin-top: 8px; padding: 8px 8px 6px; }
+            #startScreen .modeRow{ margin: 4px 0; }
+            #startScreen .modeSeg label{ padding: 5px 8px; border-radius: 10px; }
+            #startScreen .modeLabel{ min-width: 68px; font-size: 11px; }
+            #startScreen .modeSelect{ padding: 6px 8px; max-width: 200px; }
+            #startScreen .modeNote{ font-size: 10px; }
+            #startScreen .leftActions{ gap: 8px; margin-top: 8px; }
+            #startScreen .saveRow{ margin: 4px 0 6px; gap: 8px; }
+            #startScreen .startBtnBig{ font-size: 1.05rem; padding: 10px 16px; border-radius: 12px; }
+            #startScreen .leftActions .startBtnBig{ padding: 10px 16px; font-size: 1.05rem; }
+            #startScreen .saveBtnClear{ font-size: 0.9rem; padding: 8px 12px; border-radius: 10px; }
+            #startScreen .leftStats{ font-size: 11px; }
+        }
+
+
+        /* === Welcome Overlay (pre-menu) === */
+        #welcomeOverlay{
+            position:fixed;
+            inset:0;
+            display:none;
+            align-items:center;
+            justify-content:center;
+            background:transparent;
+            z-index:999999;
+            padding:18px;
+        }
+        #welcomeCard{
+            width:min(760px, 94vw);
+            max-height:min(78vh, 640px);
+            overflow:auto;
+            background:rgba(18, 20, 26, 0.92);
+            border:1px solid rgba(255,255,255,0.12);
+            border-radius:18px;
+            padding:22px 22px 18px;
+            box-shadow:0 30px 90px rgba(0,0,0,0.55);
+            backdrop-filter: blur(10px);
+        }
+        #welcomeCard h2{
+            margin:0 0 10px 0;
+            font-size:26px;
+            letter-spacing:0.5px;
+            color:#ffe36e;
+            text-shadow:0 0 10px rgba(255,227,110,0.25);
+        }
+        #welcomeCard p{
+            margin:8px 0;
+            line-height:1.45;
+            opacity:0.95;
+        }
+        #welcomeCard a{
+            color:#8fd3ff;
+            text-decoration:none;
+            border-bottom:1px dotted rgba(143,211,255,0.55);
+        }
+        #welcomeCard a:hover{ opacity:0.95; }
+
+/* === Welcome Glow + Bounce (Phase 12 polish) === */
+#welcomeCard{
+    /* slightly brighter but still dark */
+    background: linear-gradient(180deg, rgba(32, 36, 52, 0.96), rgba(18, 20, 26, 0.92));
+    border: 1px solid rgba(255,255,255,0.14);
+    box-shadow:
+        0 30px 90px rgba(0,0,0,0.55),
+        0 0 46px rgba(143,211,255,0.08),
+        inset 0 1px 0 rgba(255,255,255,0.06);
+}
+
+#welcomeCard a{
+    display:inline-flex;
+    align-items:center;
+    gap:6px;
+    padding:3px 10px;
+    border-radius:999px;
+    color:#d8f0ff;
+    text-decoration:none;
+    border:1px solid rgba(143,211,255,0.28);
+            border-bottom:none;
+    background: rgba(143,211,255,0.10);
+    box-shadow: 0 0 0 rgba(143,211,255,0);
+    transform: translateZ(0);
+    will-change: transform, box-shadow, background;
+    transition: transform 140ms ease, box-shadow 140ms ease, background 140ms ease, border-color 140ms ease, color 140ms ease;
+}
+#welcomeCard a:hover{
+    opacity:1;
+    transform: translateY(-2px) scale(1.03);
+    background: rgba(143,211,255,0.16);
+    border-color: rgba(143,211,255,0.45);
+    box-shadow: 0 10px 28px rgba(0,0,0,0.30), 0 0 18px rgba(143,211,255,0.32);
+}
+#welcomeCard a:active{
+    transform: translateY(0px) scale(0.98);
+    box-shadow: 0 6px 18px rgba(0,0,0,0.28), 0 0 12px rgba(143,211,255,0.22);
+}
+#welcomeCard a:focus-visible{
+    outline:none;
+    box-shadow: 0 10px 28px rgba(0,0,0,0.30), 0 0 0 2px rgba(143,211,255,0.35), 0 0 18px rgba(143,211,255,0.32);
+}
+
+#welcomeContinueBtn{
+    transform: translateZ(0);
+    will-change: transform, box-shadow, filter;
+    transition: transform 140ms ease, box-shadow 140ms ease, filter 140ms ease;
+}
+#welcomeContinueBtn:hover{
+    transform: translateY(-2px) scale(1.02);
+    filter: brightness(1.06);
+    box-shadow: 0 14px 30px rgba(0,0,0,0.40), 0 0 22px rgba(255,227,110,0.26);
+}
+#welcomeContinueBtn:active{
+    transform: translateY(0px) scale(0.98);
+    filter: brightness(0.98);
+    box-shadow: 0 10px 22px rgba(0,0,0,0.35), 0 0 18px rgba(255,227,110,0.18);
+}
+#welcomeContinueBtn:focus-visible{
+    outline:none;
+    box-shadow: 0 14px 30px rgba(0,0,0,0.40), 0 0 0 2px rgba(255,227,110,0.35), 0 0 22px rgba(255,227,110,0.26);
+}
+
+        #welcomeCard .welcomeRow{
+            margin-top:14px;
+            display:flex;
+            gap:10px;
+            flex-wrap:wrap;
+            align-items:center;
+            justify-content:flex-end;
+        }
+        #welcomeContinueBtn{
+            cursor:pointer;
+            border:none;
+            border-radius:14px;
+            padding:10px 16px;
+            font-weight:700;
+            color:#0f1116;
+            background:linear-gradient(180deg, #ffe36e, #f5c84a);
+            box-shadow:0 10px 22px rgba(0,0,0,0.35), 0 0 18px rgba(255,227,110,0.18);
+        }
+        #welcomeContinueBtn:active{ transform: translateY(0px) scale(0.98); filter: brightness(0.98); }
+        #welcomeHint{
+            font-size:12px;
+            opacity:0.8;
+            margin-right:auto;
+        }
