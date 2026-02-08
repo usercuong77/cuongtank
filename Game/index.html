@@ -1,0 +1,605 @@
+﻿<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Tank Battle 2D</title>
+    <!-- THÊM DÒNG NÀY ĐỂ CÓ ICON XE TĂNG (Phiên bản đẹp: có sao vàng, bánh xích chi tiết) -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3C!-- Tracks --%3E%3Crect x='5' y='10' width='12' height='44' rx='2' fill='%231a1a1a'/%3E%3Crect x='47' y='10' width='12' height='44' rx='2' fill='%231a1a1a'/%3E%3Cpath d='M5 18h12M5 26h12M5 34h12M5 42h12M5 50h12M47 18h12M47 26h12M47 34h12M47 42h12M47 50h12' stroke='%23333' stroke-width='2'/%3E%3C!-- Body Shadow --%3E%3Crect x='12' y='16' width='40' height='34' rx='6' fill='%231b5e20'/%3E%3C!-- Body Main --%3E%3Crect x='12' y='13' width='40' height='34' rx='6' fill='%2343a047'/%3E%3C!-- Turret Shadow --%3E%3Ccircle cx='32' cy='33' r='13' fill='%231b5e20'/%3E%3C!-- Turret Main --%3E%3Ccircle cx='32' cy='30' r='12' fill='%2366bb6a'/%3E%3C!-- Barrel --%3E%3Crect x='29' y='2' width='6' height='28' fill='%232e7d32'/%3E%3Crect x='27' y='0' width='10' height='6' rx='1' fill='%231b5e20'/%3E%3C!-- Star --%3E%3Cpath d='M32 23l1.2 3.6h3.8l-3 2.2 1.1 3.6-3.1-2.2-3.1 2.2 1.1-3.6-3-2.2h3.8z' fill='%23ffeb3b'/%3E%3C/svg%3E">
+    
+        <link rel="stylesheet" href="assets/css/main.css">
+</head>
+<body>
+
+    <canvas id="gameCanvas"></canvas>
+
+    <!-- UI Layer -->
+    <div id="gameUI" class="ui-layer hidden">
+        <div id="hud-top-left">
+            <div class="hud-text wave-text">WAVE <span id="waveVal">1</span></div>
+            <div id="fpsCounter" class="hud-text hidden hud-fps">FPS: <span id="fpsVal">0</span></div>
+            <div class="hud-text">&#272;i&#7875;m: <span id="scoreVal" class="highlight">0</span></div>
+            <div class="hud-text">V&#224;ng: <span id="goldVal" class="highlight hud-gold">0</span></div>
+            <div class="hud-text hud-enemy">K&#7867; &#273;&#7883;ch: <span id="enemyCount">0</span></div>
+        </div>
+
+        <div id="hud-top-right">
+            <div id="buffsContainer"></div>
+        </div>
+
+        <!-- BOSS HP BAR -->
+        <div id="bossHealthContainer">
+            <div id="bossHealthBar"></div>
+            <div id="bossName">MECHA BOSS</div>
+        </div>
+
+        <!-- WEAPON & SKILL UI -->
+        <div id="bottomBar">
+            <div id="ultiContainer">
+                <div id="ultiText">BÃO LỬA (Space)</div>
+                <div id="ultiBar"></div>
+            </div>
+
+            <div id="playersHudRow">
+                <!-- P1 HUD -->
+                <div class="playerHud" id="hudP1">
+                    <div id="healthBarContainer">
+                        <div id="shieldOverlay"></div>
+                        <div id="healthBar"></div>
+                <div class="hud-slot-title">
+                            <span class="hpLabel">P1</span>&nbsp;<span id="hpText">100/100</span>
+                        </div>
+                    </div>
+
+                    <div id="skillBar">
+                <div class="slot" id="skill-clone">
+                            <div class="key-number">Q</div>
+                            <div class="icon">Phân<br>Thân</div>
+                            <div class="cooldown-overlay" id="cd-clone"></div>
+                            <div class="cooldown-text" id="cdt-clone"></div>
+                        </div>
+                <div class="slot" id="skill-stealth">
+                            <div class="key-number">E</div>
+                            <div class="icon">Tàng<br>Hình</div>
+                            <div class="cooldown-overlay" id="cd-stealth"></div>
+                            <div class="cooldown-text" id="cdt-stealth"></div>
+                        </div>
+                <div class="slot" id="skill-vampirism">
+                            <div class="key-number">R</div>
+                            <div class="icon">Hút<br>Máu</div>
+                            <div class="cooldown-overlay" id="cd-vampirism"></div>
+                            <div class="cooldown-text" id="cdt-vampirism"></div>
+                        </div>
+                    </div>
+
+                    <div id="weaponBar"></div>
+                </div>
+
+                <div class="hudDivider" id="hudDivider" aria-hidden="true"></div>
+
+                <!-- P2 HUD (Phase 10.1) -->
+            <div class="playerHud hidden" id="hudP2">
+                    <div id="healthBarContainer2">
+                        <div id="shieldOverlay2"></div>
+                        <div id="healthBar2"></div>
+                <div class="hud-slot-title">
+                            <span class="hpLabel">P2</span>&nbsp;<span id="hpText2">100/100</span>
+                        </div>
+                    </div>
+
+                    <div id="skillBar2">
+                <div class="slot" id="skill2-clone">
+                            <div class="key-number">1</div>
+                            <div class="icon">Phân<br>Thân</div>
+                            <div class="cooldown-overlay" id="cd2-clone"></div>
+                            <div class="cooldown-text" id="cdt2-clone"></div>
+                        </div>
+                <div class="slot" id="skill2-stealth">
+                            <div class="key-number">2</div>
+                            <div class="icon">Tàng<br>Hình</div>
+                            <div class="cooldown-overlay" id="cd2-stealth"></div>
+                            <div class="cooldown-text" id="cdt2-stealth"></div>
+                        </div>
+                <div class="slot" id="skill2-vampirism">
+                            <div class="key-number">3</div>
+                            <div class="icon">Hút<br>Máu</div>
+                            <div class="cooldown-overlay" id="cd2-vampirism"></div>
+                            <div class="cooldown-text" id="cdt2-vampirism"></div>
+                        </div>
+                    </div>
+
+                    <div id="weaponBar2"></div>
+                </div>
+            </div>
+        </div>
+
+<div id="world-info">Map Size: 3x | Bug Fixed | Cleaned</div>
+    </div>
+
+
+    <!-- Welcome Overlay (pre-menu) -->
+    <div id="welcomeOverlay" role="dialog" aria-modal="true" aria-label="Ch&#224;o m&#7915;ng">
+        <div id="welcomeCard">
+            <h2>Ch&#250;c b&#7841;n ch&#417;i game vui v&#7867;!</h2>
+            <p>Tr&#432;&#7899;c khi v&#224;o menu ch&#7885;n h&#7879; xe, h&#227;y chu&#7849;n b&#7883; tinh th&#7847;n &#8220;c&#224;y&#8221; th&#7853;t &#273;&#227;.</p>
+            <p><b>G&#7907;i &#253; nhanh:</b> Hard d&#249;ng chu&#7897;t &#273;&#7875; ng&#7855;m/b&#7855;n - Easy/2P t&#7921; ng&#7855;m t&#7921; b&#7855;n.</p>
+            <p><b>Li&#234;n h&#7879; support:</b> <a href="https://www.facebook.com/lvmedits" target="_blank" rel="noopener">C&#432;&#7901;ng &#273;&#7865;p trai</a></p>
+            <div class="welcomeRow">
+                <div id="welcomeHint">Ch&#7881; b&#7845;m n&#250;t &#273;&#7875; ti&#7871;p t&#7909;c</div>
+                <button id="welcomeContinueBtn" type="button">Ok C&#432;&#7901;ng &#273;&#7865;p trai</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Start Screen -->
+    <div id="startScreen">
+        <button class="btn" id="btnSettingsStart">SETTINGS</button>
+        <div class="start16">
+            <div class="startTop">
+                <div class="startTitleWrap">
+                    <div class="startTitle">TANK BATTLE 2D</div>
+                    <div class="startSubtitle">Ch&#7885;n h&#7879; xe - xem preview &amp; k&#7929; n&#259;ng</div>
+                </div>
+                <div class="startHints">
+                    <div class="hintLine">Nh&#7863;t <b>2 s&#250;ng gi&#7889;ng nhau</b> &#273;&#7875; <b>N&#194;NG C&#7844;P</b> (t&#7889;i &#273;a Lv.5).</div>
+                    <div class="hintLine warn">&#272;&#7841;n th&#432;&#7901;ng kh&#244;ng bao gi&#7901; m&#7845;t, ch&#7881; b&#7883; h&#7841; c&#7845;p.</div>
+                    <div class="hintLine danger">C&#7842;NH B&#193;O: Boss s&#7869; ph&#225; h&#7911;y m&#7885;i v&#7853;t c&#7843;n!</div>
+                </div>
+            </div>
+
+            <div class="startMain">
+                <!-- LEFT: System list -->
+                <div class="startLeft">
+                    <div class="panelTitle">CH&#7884;N H&#7878; XE T&#258;NG</div>
+
+                    <div id="systemList" class="systemList">
+                        <label class="sysItem" data-sys="default">
+                            <input type="radio" name="tankSystem" value="default" checked />
+                            <canvas class="sysMini" data-sys="default" width="84" height="56"></canvas>
+                            <div class="sysText">
+                                <div class="sysName">Chi&#7871;n Binh</div>
+                                <div class="sysDesc">Ph&#226;n th&#226;n &#8226; T&#224;ng h&#236;nh &#8226; H&#250;t m&#225;u</div>
+                            </div>
+                        </label>
+
+                        <label class="sysItem" data-sys="speed">
+                            <input type="radio" name="tankSystem" value="speed" />
+                            <canvas class="sysMini" data-sys="speed" width="84" height="56"></canvas>
+                            <div class="sysText">
+                                <div class="sysName">T&#7889;c &#272;&#7897;</div>
+                                <div class="sysDesc">L&#432;&#7899;t &#8226; Mi&#7877;n th&#432;&#417;ng &#8226; Cu&#7891;ng t&#7889;c</div>
+                            </div>
+                        </label>
+
+                        <label class="sysItem" data-sys="engineer">
+                            <input type="radio" name="tankSystem" value="engineer" />
+                            <canvas class="sysMini" data-sys="engineer" width="84" height="56"></canvas>
+                            <div class="sysText">
+                                <div class="sysName">K&#7929; S&#432;</div>
+                                <div class="sysDesc">Th&#225;p ph&#225;o &#8226; S&#7917;a ch&#7919;a &#8226; Xung EMP</div>
+                            </div>
+                        </label>
+
+                        <label class="sysItem" data-sys="juggernaut">
+                            <input type="radio" name="tankSystem" value="juggernaut" />
+                            <canvas class="sysMini" data-sys="juggernaut" width="84" height="56"></canvas>
+                            <div class="sysText">
+                                <div class="sysName">Gi&#225;p S&#7855;t</div>
+                                <div class="sysDesc">Gi&#225;p ph&#7843;n &#8226; C&#250; h&#250;c &#8226; Ph&#225;o &#273;&#224;i</div>
+                            </div>
+                        </label>
+
+                        <label class="sysItem" data-sys="mage">
+                            <input type="radio" name="tankSystem" value="mage" />
+                            <canvas class="sysMini" data-sys="mage" width="84" height="56"></canvas>
+                            <div class="sysText">
+                                <div class="sysName">Ph&#225;p S&#432;</div>
+                                <div class="sysDesc">H&#7887;a c&#7847;u &#8226; D&#7883;ch chuy&#7875;n &#8226; B&#227;o tuy&#7871;t</div>
+                            </div>
+                        </label>
+
+                        <label class="sysItem" data-sys="assassin">
+                            <input type="radio" name="tankSystem" value="assassin" />
+                            <canvas class="sysMini" data-sys="assassin" width="84" height="56"></canvas>
+                            <div class="sysText">
+                                <div class="sysName">S&#225;t Th&#7911;</div>
+                                <div class="sysDesc">&#193;m K&#237;ch &#8226; Li&#234;n Ho&#224;n &#8226; Th&#7853;p &#7842;nh</div>
+                            </div>
+                        </label>
+                    </div>
+
+                    <div class="leftFootNote">
+                        Tip: <b>t&#7855;t VietKey / b&#7897; g&#245; ti&#7871;ng Vi&#7879;t</b> (chuy&#7875;n EN) &#273;&#7875; di chuy&#7875;n m&#432;&#7907;t m&#224;.
+                    </div>
+
+                    <div class="keyGuideWide">
+                        <div class="kg"><span class="key">WASD</span><span>Di chuy&#7875;n</span></div>
+                        <div class="kg"><span class="key">Chu&#7897;t</span><span>Ng&#7855;m &amp; B&#7855;n</span></div>
+                        <div class="kg"><span class="key">1-6</span><span>Ch&#7885;n s&#250;ng</span></div>
+                        <div class="kg"><span class="key">Q/E/R</span><span>K&#7929; n&#259;ng</span></div>
+                        <div class="kg"><span class="key">P</span><span>T&#7841;m d&#7915;ng</span></div>
+                        <div class="kg"><span class="key">ESC</span><span>Settings</span></div>
+                    </div>
+
+                    <div class="leftActions">
+                        
+                    <div class="modeBox" id="modeBox">
+                        <div class="modeTitle">CH&#7870; &#272;&#7896;</div>
+
+                        <div class="modeRow">
+                            <div class="modeLabel">Ng&#432;&#7901;i ch&#417;i</div>
+                            <div class="modeSeg">
+                                <label><input type="radio" name="modePlayers" value="1" checked><span>1P</span></label>
+                                <label><input type="radio" name="modePlayers" value="2"><span>2P</span></label>
+                            </div>
+                        </div>
+
+                        <div class="modeRow" id="modeVariantRow">
+                            <div class="modeLabel" id="modeVariantLabel">&#272;&#7897; kh&#243;</div>
+                            <div class="modeSeg" id="difficultySeg">
+                                <label><input type="radio" name="modeDifficulty" value="hard" checked><span>Hard</span></label>
+                                <label><input type="radio" name="modeDifficulty" value="easy"><span>Easy</span></label>
+                            </div>
+                            <div class="modeSeg hidden" id="p2ModeSeg">
+                                <label><input type="radio" name="mode2p" value="coop" checked><span>2P Bot</span></label>
+                                <label><input type="radio" name="mode2p" value="pvp"><span>PvP</span></label>
+                            </div>
+                        </div>
+
+                        <div class="modeRow hidden" id="p2SystemRow">
+                            <div class="modeLabel">P2 h&#7879;</div>
+                            <select id="p2SystemSelect" class="modeSelect">
+                                <option value="default">Chi&#7871;n Binh</option>
+                                <option value="speed">T&#7889;c &#272;&#7897;</option>
+                                <option value="engineer">K&#7929; S&#432;</option>
+                                <option value="juggernaut">Gi&#225;p S&#7855;t</option>
+                                <option value="mage">Ph&#225;p S&#432;</option>
+                                <option value="assassin">S&#225;t Th&#7911;</option>
+                            </select>
+                        </div>
+
+                        <div class="modeNote" id="modeNote">Hard 1P: chu&#7897;t ng&#7855;m + click b&#7855;n (Phase 1 ch&#7881; l&#432;u mode, ch&#432;a &#273;&#7893;i gameplay).</div>
+                        <div class="modeRow hidden" id="pvpLoadoutRow">
+                            <div class="modeLabel">PvP Build</div>
+                            <div class="pvpLoadoutWrap">
+                                <div class="pvpLoadCard">
+                                    <div class="pvpLoadTitle">P1</div>
+                                    <select id="pvpP1Ammo" class="modeSelect"></select>
+                                    <div class="pvpItemsGrid">
+                                        <select id="pvpP1Item1" class="modeSelect"></select>
+                                        <select id="pvpP1Item2" class="modeSelect"></select>
+                                        <select id="pvpP1Item3" class="modeSelect"></select>
+                                    </div>
+                                </div>
+                                <div class="pvpLoadCard">
+                                    <div class="pvpLoadTitle">P2</div>
+                                    <select id="pvpP2Ammo" class="modeSelect"></select>
+                                    <div class="pvpItemsGrid">
+                                        <select id="pvpP2Item1" class="modeSelect"></select>
+                                        <select id="pvpP2Item2" class="modeSelect"></select>
+                                        <select id="pvpP2Item3" class="modeSelect"></select>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="modeNote hidden" id="pvpLoadoutHint">PvP-only: m&#7895;i b&#234;n ch&#7885;n 1 &#273;&#7841;n + 3 trang b&#7883; kh&#225;c nhau.</div>
+                    </div>
+
+                        
+                        <div class="saveRow">
+                            <button class="btn startBtnBig saveBtnContinue hidden" id="continueBtn" type="button">TI&#7870;P T&#7908;C</button>
+                            <button class="btn saveBtnClear hidden" id="clearSaveBtn" type="button">X&#211;A SAVE</button>
+                            <button class="btn startBtnBig" id="startBtn">TRI&#7874;N KHAI</button>
+                        </div>
+                        <div class="leftStats">Best Score: <span id="startBestScore">0</span> &bull; Best Wave: <span id="startBestWave">0</span></div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Preview + Skills -->
+                <div class="startRight">
+                    <div class="previewWrap">
+                        <div class="panelTitle">PREVIEW</div>
+                        <canvas id="systemPreview" width="640" height="360"></canvas>
+                        <div class="previewMeta">
+                            <div id="sysTagline" class="sysTagline">-</div>
+</div>
+                    </div>
+
+                    <div class="skillsWrap">
+                        <div class="panelTitle">B&#7842;NG CHI&#202;U</div>
+                        <div id="systemDetails" class="systemDetails"></div>
+                    </div>
+                </div>
+            </div>
+</div>
+    </div>
+
+    <!-- Game Over Screen -->
+    <div id="gameOverScreen" class="hidden">
+        <h2>TH&#7844;T B&#7840;I</h2>
+        <p>B&#7841;n &#273;&#227; d&#7915;ng b&#432;&#7899;c t&#7841;i Wave <span id="finalWave">0</span></p>
+        <p>T&#7893;ng &#273;i&#7875;m: <span id="finalScore">0</span></p>
+        <button class="btn" id="restartBtn">CH&#416;I L&#7840;I</button>
+        <button class="btn" id="menuBtnGO">V&#7872; MENU</button>
+    </div>
+
+
+    <!-- Victory Screen -->
+    <div id="victoryScreen" class="hidden">
+        <h2>CHI&#7870;N TH&#7854;NG</h2>
+        <p>B&#7841;n &#273;&#227; h&#7841; Boss t&#7841;i Wave <span id="victoryWave">0</span></p>
+        <p>T&#7893;ng &#273;i&#7875;m: <span id="victoryScore">0</span></p>
+        <p class="victory-sub">
+            K&#7927; l&#7909;c: Score <span id="victoryBestScore">0</span> -
+            Wave <span id="victoryBestWave">0</span>
+        </p>
+        <button class="btn" id="victoryRestartBtn">CH&#416;I L&#7840;I</button>
+        <button class="btn" id="victoryEndlessBtn">CH&#416;I TI&#7870;P (ENDLESS)</button>
+        <button class="btn" id="victoryMenuBtn">V&#7872; MENU</button>
+    </div>
+
+
+    
+    <!-- MAX UI: Settings + Stats -->
+    <div id="maxTopBar" class="hidden">
+        <button class="btn" id="btnPause">PAUSE (P)</button>
+        <button class="btn" id="btnSettings">SETTINGS (Esc)</button>
+        <button class="btn" id="btnSaveQuit">SAVE &amp; QUIT</button>
+        <button class="btn" id="btnPvpReplay">REPLAY PVP</button>
+    </div>
+
+    <div id="settingsModal" class="hidden">
+        <div class="settings-panel">
+            <div class="settings-header">
+                <div class="settings-title">SETTINGS</div>
+                <button class="btn btn-close-settings" id="btnCloseSettings">CLOSE</button>
+            </div>
+
+            <div class="settings-body">
+                <div class="settings-row">
+                    <div>&#194;m l&#432;&#7907;ng</div>
+                    <input id="setVolume" type="range" min="0" max="1" step="0.01" />
+                    <div id="setVolumeVal" class="settings-value">100%</div>
+                </div>
+
+                <div class="settings-row">
+    <div>&#194;m l&#432;&#7907;ng Music</div>
+    <input id="setMusicVolume" type="range" min="0" max="1" step="0.01" />
+    <div id="setMusicVolumeVal" class="settings-value">70%</div>
+</div>
+
+<div class="settings-row">
+                    <div>FPS cap</div>
+                    <input id="setFpsCap" type="range" min="30" max="120" step="1" />
+                    <div id="setFpsCapVal" class="settings-value">60</div>
+                </div>
+
+                <div class="settings-checks">
+                    <label class="settings-check"><input id="setShake" type="checkbox" /> Screen shake</label>
+                    <label class="settings-check"><input id="setMinimap" type="checkbox" /> Minimap</label>
+                    <label class="settings-check"><input id="setFps" type="checkbox" /> FPS Counter</label>
+                    <label class="settings-check"><input id="setAutoSave" type="checkbox" /> Auto Save</label>
+                    <label class="settings-check"><input id="setAimAssist" type="checkbox" /> Aim Assist</label>
+                </div>
+
+                <div class="settings-progress">
+                    <div class="settings-progress-title">PROGRESS</div>
+                    <div class="settings-progress-grid">
+                        <div>Best Score: <span id="bestScore">0</span></div>
+                        <div>Best Wave: <span id="bestWave">0</span></div>
+                    </div>
+                    <div class="settings-progress-actions">
+                        <button class="btn btn-save-now" id="btnSaveNow">SAVE</button>
+                        <button class="btn btn-reset-save" id="btnResetSave">RESET SAVE</button>
+                    </div>
+                    </div>
+
+                <div class="settings-hotkeys">
+                    Hotkeys: <span class="key">P</span> Pause/Resume, <span class="key">Esc</span> Settings, <span class="key">M</span> Minimap, <span class="key">F</span> FPS.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SHOP (Wave Complete) -->
+    <div id="shopModal" class="hidden">
+        <div class="shop-panel">
+            <div class="shop-header">
+                <div class="shop-title">SHOP</div>
+                <div class="shop-meta">
+                    <div class="shop-gold">GOLD: <span id="shopGold">0</span></div>
+                    <div class="shop-next">Next wave: <span id="shopNextWave">2</span></div>
+                </div>
+            </div>
+
+            <div class="shop-hint">
+                Ch&#7885;n n&#226;ng c&#7845;p b&#7857;ng v&#224;ng (B&#432;&#7899;c 2E/2F: Magnet Range +30px v&#224; Armor -5% &#273;&#227; mua &#273;&#432;&#7907;c).
+            </div>
+
+            <div id="shopCards" class="shop-cards">
+                <div class="shopCard">
+                    <div class="shop-card-title">Max HP</div>
+                    <div class="shop-card-desc">+25% Max HP</div>
+                    <div class="shop-card-meta">Level: <span id="upMaxHpLevel" class="value">0</span></div>
+                    <button class="btn shop-buy-btn" id="btnBuyMaxHp">BUY <span class="opacity-90">(</span><span id="upMaxHpCost">50</span><span class="opacity-90">G)</span></button>
+                </div>
+                <div class="shopCard">
+                    <div class="shop-card-title">Damage %</div>
+                    <div class="shop-card-desc">+10% Damage</div>
+                    <div class="shop-card-meta">Level: <span id="upDmgLevel" class="value">0</span></div>
+                    <button class="btn shop-buy-btn" id="btnBuyDmg">BUY <span class="opacity-90">(</span><span id="upDmgCost">50</span><span class="opacity-90">G)</span></button>
+                </div>
+                <div class="shopCard">
+                    <div class="shop-card-title">Fire Rate</div>
+                    <div class="shop-card-desc">-5% Cooldown</div>
+                    <div class="shop-card-meta">Level: <span id="upFireRateLevel" class="value">0</span></div>
+                    <button class="btn shop-buy-btn" id="btnBuyFireRate">BUY <span class="opacity-90">(</span><span id="upFireRateCost">50</span><span class="opacity-90">G)</span></button>
+                </div>
+                <div class="shopCard">
+                    <div class="shop-card-title">&#272;&#7897;ng C&#417;</div>
+                    <div class="shop-card-desc">+5% T&#7889;c &#272;&#7897;</div>
+                    <div class="shop-card-meta">Level: <span id="upSpeedLevel" class="value">0</span></div>
+                    <button class="btn shop-buy-btn" id="btnBuySpeed">BUY <span class="opacity-90">(</span><span id="upSpeedCost">50</span><span class="opacity-90">G)</span></button>
+                </div>
+
+                <div class="shopCard shop-card--soft">
+                    <div class="shop-card-title">Pickup Range</div>
+                    <div class="shop-card-desc">+30px Magnet</div>
+                    <div class="shop-card-meta">Level: <span id="upMagnetLevel" class="value">0</span></div>
+                    <button class="btn shop-buy-btn" id="btnBuyMagnet">BUY <span class="opacity-90">(</span><span id="upMagnetCost">50</span><span class="opacity-90">G)</span></button>
+                </div>
+                <div class="shopCard shop-card--soft">
+                    <div class="shop-card-title">Armor</div>
+                    <div class="shop-card-desc">-5% Damage Taken</div>
+                    <div class="shop-card-meta">Level: <span id="upArmorLevel" class="value">0</span></div>
+                    <button class="btn shop-buy-btn" id="btnBuyArmor">BUY <span class="opacity-90">(</span><span id="upArmorCost">50</span><span class="opacity-90">G)</span></button>
+                </div>
+
+            </div>
+            <div class="shopCard shop-card--heal" data-fixed="1">
+                <div class="shop-card-title">H&#7891;i M&#225;u 30%</div>
+                <div class="shop-card-desc">H&#7891;i 30% Max HP (kh&#244;ng h&#7891;i sinh)</div>
+                <div class="shop-card-meta">Gi&#225;: <span id="upHeal30Cost" class="value">200</span>G</div>
+                <button class="btn shop-buy-btn" id="btnBuyHeal30">BUY <span class="opacity-90">(</span>200<span class="opacity-90">G)</span></button>
+            </div>
+
+            <div class="shop-footer">
+                <div class="shop-footer-note">Nh&#7845;n <span class="key">Enter</span> &#273;&#7875; ti&#7871;p t&#7909;c.</div>
+                <button class="btn btn-shop-continue" id="btnShopContinue">CONTINUE</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PvP Loadout Modal (in-game) -->
+    <div id="pvpLoadoutModal" class="hidden">
+        <div id="pvpLoadoutPanel">
+            <div class="pvpLoadTop">
+                <div>
+                    <div class="pvpLoadTitleMain">SHOP PvP - Ch&#7885;n &#272;&#7841;n &amp; Trang B&#7883;</div>
+                    <div class="pvpLoadSub">M&#7895;i b&#234;n ch&#7885;n 1 &#273;&#7841;n PvP v&#224; 3 trang b&#7883; kh&#225;c nhau. C&#243; hi&#7875;n th&#7883; th&#244;ng s&#7889; &#273;&#7875; ng&#432;&#7901;i m&#7899;i d&#7877; xem.</div>
+                </div>
+                <div class="pvpLoadRoundHint">Build n&#224;y ch&#7881; d&#249;ng cho PvP.</div>
+            </div>
+
+            <div class="pvpLoadGrid">
+                <div class="pvpSideCard">
+                    <div class="pvpSideHead">P1</div>
+                    <label class="pvpFieldLabel">&#272;&#7841;n PvP</label>
+                    <select id="pvpLiveP1Ammo" class="modeSelect"></select>
+                    <div id="pvpLiveP1AmmoInfo" class="pvpStatBox"></div>
+
+                    <label class="pvpFieldLabel">Trang b&#7883; 1</label>
+                    <select id="pvpLiveP1Item1" class="modeSelect"></select>
+                    <label class="pvpFieldLabel">Trang b&#7883; 2</label>
+                    <select id="pvpLiveP1Item2" class="modeSelect"></select>
+                    <label class="pvpFieldLabel">Trang b&#7883; 3</label>
+                    <select id="pvpLiveP1Item3" class="modeSelect"></select>
+                    <div id="pvpLiveP1ItemsInfo" class="pvpItemsInfo"></div>
+                </div>
+
+                <div class="pvpSideCard">
+                    <div class="pvpSideHead">P2</div>
+                    <label class="pvpFieldLabel">&#272;&#7841;n PvP</label>
+                    <select id="pvpLiveP2Ammo" class="modeSelect"></select>
+                    <div id="pvpLiveP2AmmoInfo" class="pvpStatBox"></div>
+
+                    <label class="pvpFieldLabel">Trang b&#7883; 1</label>
+                    <select id="pvpLiveP2Item1" class="modeSelect"></select>
+                    <label class="pvpFieldLabel">Trang b&#7883; 2</label>
+                    <select id="pvpLiveP2Item2" class="modeSelect"></select>
+                    <label class="pvpFieldLabel">Trang b&#7883; 3</label>
+                    <select id="pvpLiveP2Item3" class="modeSelect"></select>
+                    <div id="pvpLiveP2ItemsInfo" class="pvpItemsInfo"></div>
+                </div>
+            </div>
+
+            <div class="pvpLoadActions">
+                <button class="btn" id="pvpLiveReset">M&#7863;c &#273;&#7883;nh</button>
+                <button class="btn" id="pvpLiveConfirm">V&#224;o tr&#7853;n</button>
+            </div>
+        </div>
+    </div>
+    <!-- Hidden Admin Code Modal -->
+    <div id="adminCodeModal" class="hidden">
+        <div id="adminCodePanel">
+            <h3>ADMIN</h3>
+            <input id="adminCodeInput" type="password" autocomplete="off" spellcheck="false" placeholder="Nh&#7853;p code..." />
+            <div id="adminCodeMsg"></div>
+        </div>
+    </div>
+
+
+    <!-- Assassin Lock Modal -->
+    <div id="assassinLockModal" class="hidden">
+        <div id="assassinLockPanel">
+            <h3>S&#193;T TH&#7910;</h3>
+            <div id="assassinLockText">Ch&#417;i th&#7855;ng m&#224;n 20 &#273;&#7875; m&#7903; kho&#225; ho&#7863;c nh&#7853;p code.</div>
+            <input id="assassinUnlockInput" type="text" autocomplete="off" spellcheck="false" placeholder="Nh&#7853;p code m&#7903; kho&#225;..." />
+            <div id="assassinUnlockRow">
+                <button class="btn btn-dark" id="assassinUnlockClose">&#272;&#243;ng</button>
+                <button class="btn btn-gold" id="assassinUnlockBtn">M&#7903; kho&#225;</button>
+            </div>
+            <div id="assassinUnlockMsg"></div>
+        </div>
+    </div>
+
+    <div id="copyrightBadge">B&#7843;n quy&#7873;n: Cuongdz &copy; 2026</div>
+
+
+    <!-- VietKey confirmation (pre-game) -->
+    <div id="vietkeyModal" class="hidden">
+        <div id="vietkeyPanel">
+            <div class="vk-header">
+                <div class="vk-title">L&#431;U &#221;</div>
+                <div class="vk-sub">(Enter = R&#7891;i, Esc = Ch&#432;a)</div>
+            </div>
+            <div class="vk-body">
+                VietKey/b&#7897; g&#245; ti&#7871;ng Vi&#7879;t c&#243; th&#7875; l&#224;m <b>lag ph&#237;m</b>. B&#7841;n &#273;&#227; t&#7855;t VietKey (chuy&#7875;n EN) ch&#432;a?
+            </div>
+            <div class="vk-actions">
+                <button class="btn btn-dark" id="vkNo">Ch&#432;a</button>
+                <button class="btn btn-green" id="vkYes">R&#7891;i</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="assets/js/runtime/app-namespace.js"></script>
+    <script src="assets/js/runtime/i18n.js"></script>
+    <script src="assets/js/runtime/bgm.js"></script>
+    <script src="assets/js/runtime/welcome.js"></script>
+    <script src="assets/js/runtime/core-config-base.js"></script>
+    <script src="assets/js/runtime/systems-pvp.js"></script>
+    <script src="assets/js/runtime/systems-skills.js"></script>
+    <script src="assets/js/runtime/core-engine.js"></script>
+    <script src="assets/js/runtime/save-flow.js"></script>
+    <script src="assets/js/runtime/core-state.js"></script>
+    <script src="assets/js/runtime/core-game-loop.js"></script>
+    <script src="assets/js/runtime/ui-menu.js"></script>
+    <script src="assets/js/runtime/ui-shop.js"></script>
+    <script src="assets/js/runtime/ui-hud.js"></script>
+    <script src="assets/js/runtime/ui-preview.js"></script>
+    <script src="assets/js/runtime/ui-vfx.js"></script>
+    <script src="assets/js/runtime/ui-weapons.js"></script>
+    <script src="assets/js/runtime/qa-hooks.js"></script>
+    <script src="assets/js/runtime/core-ui-vfx.js"></script>
+    <script src="assets/js/runtime/ui-lifecycle.js"></script>
+    <script src="assets/js/runtime/runtime-order-guard.js"></script>
+</body>
+</html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

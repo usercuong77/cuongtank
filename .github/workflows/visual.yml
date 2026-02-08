@@ -31,17 +31,21 @@ jobs:
           cache: npm
 
       - name: Install dependencies
+        working-directory: Test
         run: npm ci
 
       - name: Install Playwright browsers
+        working-directory: Test
         run: npx playwright install chromium
 
       - name: Run visual tests (check mode)
         if: ${{ github.event_name != 'workflow_dispatch' || inputs.mode != 'update' }}
+        working-directory: Test
         run: npm run test:visual
 
       - name: Run visual tests (update snapshots mode)
         if: ${{ github.event_name == 'workflow_dispatch' && inputs.mode == 'update' }}
+        working-directory: Test
         run: npm run test:visual:update
 
       - name: Upload visual artifacts (always)
@@ -50,7 +54,7 @@ jobs:
         with:
           name: visual-artifacts
           path: |
-            playwright-report
-            test-results
-            tests/visual.spec.js-snapshots
+            Test/playwright-report
+            Test/test-results
+            Test/tests/visual.spec.js-snapshots
           if-no-files-found: ignore
