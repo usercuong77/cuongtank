@@ -92,7 +92,7 @@ exit /b %EC%
 echo Usage: run-test.bat [mode]
 echo.
 echo Modes:
-echo   preflight      Full local gate (syntax + assets + e2e + git sanity) [default]
+echo   preflight      Full local gate (lint + unit + syntax + assets + e2e + git sanity) [default]
 echo   release        Strict release gate (requires main + clean git tree)
 echo   e2e            Run all e2e tests
 echo   headed         Run e2e tests in headed mode

@@ -85,6 +85,7 @@ function main() {
   console.log('[pre-release] mode:', isRelease ? 'release' : (isQuick ? 'quick' : 'full'));
 
   runNpmScript('Lint check', 'check:lint');
+  runStep('Unit logic check', process.execPath, [path.join('scripts', 'check-unit-logic.js')], { cwd: testRoot });
   runStep('Syntax check', process.execPath, [path.join('scripts', 'check-syntax.js')], { cwd: testRoot });
   runStep('Static links + runtime order check', process.execPath, [path.join('scripts', 'check-static-links.js')], { cwd: testRoot });
 

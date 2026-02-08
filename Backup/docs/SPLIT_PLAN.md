@@ -45,6 +45,8 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
   - optional modes: `release`, `e2e`, `headed`, `ui`, `visual`, `visual-update`
 - lint gate:
   - `check:lint` enforces `no-unused-vars` + `no-undef` on split-safe scope (`Game/src/data`, `core-wave*`, `core-spawn-rules`, `core-input-bindings`) and test/scripts
+- fast logic gate:
+  - `check:unit` validates `core-wave-rules`, `core-wave-start-rules`, `core-wave-transition-rules`, and `pvp-tuning-data` without launching browser
 - visual shortcuts:
   - `Test/run-visual-check.bat`
   - `Test/run-visual-update.bat`

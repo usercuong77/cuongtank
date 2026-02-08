@@ -25,13 +25,14 @@
 
 ## Test Entrypoints
 - `Test/run-test.bat`: single test runner
-  - default: `preflight` (lint + syntax + static/runtime checks + e2e + git sanity)
+  - default: `preflight` (lint + unit + syntax + static/runtime checks + e2e + git sanity)
   - other modes: `release`, `e2e`, `headed`, `ui`, `visual`, `visual-update`
 - `Test/run-visual-check.bat`: shortcut for visual regression check
 - `Test/run-visual-update.bat`: shortcut for visual snapshot update
 
 ## Test Scripts
 - `Test/check:lint`: ESLint gate for split modules (`Game/src/data`, `core-wave*`, `core-spawn-rules`, `core-input-bindings`) + test/scripts
+- `Test/scripts/check-unit-logic.js`: fast logic tests for `core-wave-*` and `pvp-tuning-data` in Node runtime
 - `Test/scripts/check-syntax.js`: syntax check for runtime/tests/scripts JS
 - `Test/scripts/check-static-links.js`: static refs + runtime-order contract + anti-monolith guard
 - `Test/scripts/pre-release-check.js`: orchestrates preflight/release gates

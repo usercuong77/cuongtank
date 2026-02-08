@@ -11,6 +11,7 @@
     "test:visual": "playwright test tests/visual.spec.js",
     "test:visual:update": "playwright test tests/visual.spec.js --update-snapshots",
     "check:lint": "eslint --max-warnings=0 --config ../.eslintrc.cjs \"../Game/src/data/**/*.js\" \"../Game/src/core/core-wave-rules.js\" \"../Game/src/core/core-wave-start-rules.js\" \"../Game/src/core/core-wave-transition-rules.js\" \"../Game/src/core/core-spawn-rules.js\" \"../Game/src/core/core-input-bindings.js\" \"scripts/**/*.js\" \"tests/**/*.js\" \"playwright.config.js\"",
+    "check:unit": "node scripts/check-unit-logic.js",
     "check:syntax": "node scripts/check-syntax.js",
     "check:assets": "node scripts/check-static-links.js",
     "check:full": "node scripts/pre-release-check.js",
