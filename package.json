@@ -9,7 +9,11 @@
     "test:e2e:headed": "playwright test --headed",
     "test:e2e:ui": "playwright test --ui",
     "test:visual": "playwright test tests/visual.spec.js",
-    "test:visual:update": "playwright test tests/visual.spec.js --update-snapshots"
+    "test:visual:update": "playwright test tests/visual.spec.js --update-snapshots",
+    "check:syntax": "node scripts/check-syntax.js",
+    "check:assets": "node scripts/check-static-links.js",
+    "check:full": "node scripts/pre-release-check.js",
+    "check:release": "node scripts/pre-release-check.js --release"
   },
   "keywords": [],
   "author": "",
