@@ -14,10 +14,10 @@
 - `Game/Music/`: game music assets
 
 ## Runtime Modules (Game/src)
-- `core/*`: boot namespace, config/state/engine/game-loop, save flow, QA hooks
+- `core/*`: boot namespace, config/state/engine/game-loop, input bindings, save flow, QA hooks
 - `systems/*`: skill and PvP systems
 - `ui/*`: menu, preview, HUD, VFX, shop, lifecycle, welcome flow
-- `data/*`: config/data modules (`i18n.js`, `skill-systems-data.js`, `pvp-tuning-data.js`, `pvp-loadout-data.js`)
+- `data/*`: config/data modules (`i18n.js`, `skill-systems-data.js`, `pvp-tuning-data.js`, `pvp-loadout-data.js`, `vfx-gfx-data.js`)
 
 ## Legacy Archive
 - `Backup/archive/runtime-legacy/game.monolith.js`: archived legacy monolith (not used by game)

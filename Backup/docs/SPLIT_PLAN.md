@@ -9,6 +9,8 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - `DONE`: `index.html` loads runtime modules in explicit, validated order.
 - `DONE`: PvP tuning config extracted into `Game/src/data/pvp-tuning-data.js` (aim/cc/passive/loadout-key).
 - `DONE`: PvP runtime resolves tuning from `App.data` first, then legacy globals/config fallback.
+- `DONE`: core input event bindings extracted from `core-engine.js` to `core-input-bindings.js`.
+- `DONE`: VFX GFX theme data extracted from `ui-vfx.js` to `data/vfx-gfx-data.js`.
 - `DONE`: legacy monolith removed from live runtime and archived at:
   - `Backup/archive/runtime-legacy/game.monolith.js`
 - `DONE`: automated guards prevent monolith regressions.
@@ -28,6 +30,8 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
   - tuning data is available via `App.data.pvpTuning`
   - legacy alias `window.PVP_TUNING_CONFIG` is still provided
   - `systems-pvp.js` keeps legacy global constants used by `core-engine.js`/`qa-hooks.js`
+- Runtime compatibility guarantees:
+  - module exports can be published via `App.compat.expose(...)` with legacy global aliases
 
 ## Current Test Entry
 - `Test/run-test.bat` (single runner)

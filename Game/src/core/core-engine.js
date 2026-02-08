@@ -3565,93 +3565,21 @@ if (__assCasting) { } else if (__isPvp) {
             },
 
             init() {
-                const isGameplayKey = (k) => ['w','a','s','d','arrowup','arrowdown','arrowleft','arrowright'].includes(k);
-
-                window.addEventListener('keydown', (e) => {
-                    // Let admin modal capture keys first.
-                    try { if (typeof Admin !== 'undefined' && Admin.captureKey && Admin.captureKey(e)) return; } catch(err){}
-
-                    // Do not steal keys while user is typing in inputs.
-                    if (this._isTypingTarget(document.activeElement) || this._isTypingTarget(e.target)) return;
-
-                    const code = e.code || '';
-                    const kRaw = (e.key || '');
-                    const k = kRaw.toLowerCase();
-
-                    if (isGameplayKey(k)) e.preventDefault();
-
-                    // Edge detection: ignore key repeat events.
-                    const wasDown = (code && this.codes[code]) || this.keys[k] === true;
-                    this.keys[k] = true;
-                    if (code) this.codes[code] = true;
-
-                    // Keep legacy compatibility for numeric keys 1-6.
-                    if (['1','2','3','4','5','6'].includes(kRaw)) this.keys[kRaw] = true;
-                    if (kRaw === ' ') this.keys[' '] = true;
-
-                    // Map key bindings by mode (Hard/Easy/2P).
-                    const m = this.getMode();
-                    const isHard1p = (m.players === 1 && m.difficulty === 'hard');
-                    const isNoMouseMode = (!isHard1p) || (m.players === 2);
-
-                    // Easy/2P: map J/K/L to Q/E/R while keeping Q/E/R fallback.
-                    if (isNoMouseMode) {
-                        if (code === 'KeyJ' || k === 'j') this.keys['q'] = true;
-                        if (code === 'KeyK' || k === 'k') this.keys['e'] = true;
-                        if (code === 'KeyL' || k === 'l') this.keys['r'] = true;
-                    }
-
-                    // Edge-trigger actions run only on first keydown.
-                    if (!wasDown && isNoMouseMode) {
-                        const __isPvp = (typeof Game !== 'undefined' && Game && Game.mode === 'PVP_DUEL_AIM');
-                        // Weapon cycle: P1=V, P2=Enter.
-                        if (code === 'KeyV' || k === 'v') { e.preventDefault(); this.queueAction('p1_weapon_cycle'); }
-                        if (!__isPvp && (code === 'Enter' || code === 'NumpadEnter' || k === 'enter')) { e.preventDefault(); this.queueAction('p2_weapon_cycle'); }
-
-                        // Target cycle: P1=T, P2=0 (numpad or digit).
-                        if (code === 'KeyT' || k === 't') { e.preventDefault(); this.queueAction('p1_target_cycle'); }
-                        if (!__isPvp && (code === 'Digit0' || code === 'Numpad0' || kRaw === '0')) { e.preventDefault(); this.queueAction('p2_target_cycle'); }
-                    }
-                });
-
-                window.addEventListener('keyup', (e) => {
-                    const code = e.code || '';
-                    const kRaw = (e.key || '');
-                    const k = kRaw.toLowerCase();
-
-                    this.keys[k] = false;
-                    if (code) this.codes[code] = false;
-
-                    if (['1','2','3','4','5','6'].includes(kRaw)) this.keys[kRaw] = false;
-                    if (kRaw === ' ') this.keys[' '] = false;
-
-                    // Release mapped keys J/K/L => Q/E/R.
-                    const m = this.getMode();
-                    const isHard1p = (m.players === 1 && m.difficulty === 'hard');
-                    const isNoMouseMode = (!isHard1p) || (m.players === 2);
-                    if (isNoMouseMode) {
-                        // Release virtual key only when matching physical key is no longer held.
-                        if (code === 'KeyJ' || k === 'j') { if (!this.codes['KeyQ']) this.keys['q'] = false; }
-                        if (code === 'KeyK' || k === 'k') { if (!this.codes['KeyE']) this.keys['e'] = false; }
-                        if (code === 'KeyL' || k === 'l') { if (!this.codes['KeyR']) this.keys['r'] = false; }
-                    }
-                });
-
-                window.addEventListener('mousemove', (e) => { this.mouse.x = e.clientX; this.mouse.y = e.clientY; });
-                window.addEventListener('mousedown', () => this.mouse.down = true);
-                window.addEventListener('mouseup',   () => this.mouse.down = false);
-
-                window.addEventListener('blur', () => {
-                    this.keys = {};
-                    this.codes = {};
-                    this.actions = {};
-                    this.mouse.down = false;
-                });
-                window.addEventListener('focus', () => {
-                    this.keys = {};
-                    this.codes = {};
-                    this.actions = {};
-                });
+                const __binder = (() => {
+                    try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.bindCoreInputEvents === 'function') {
+                            return window.App.runtime.bindCoreInputEvents;
+                        }
+                    } catch (e) {}
+                    try {
+                        if (typeof window.bindCoreInputEvents === 'function') return window.bindCoreInputEvents;
+                    } catch (e) {}
+                    return null;
+                })();
+                if (typeof __binder !== 'function') {
+                    throw new Error('Core input binder is not available.');
+                }
+                __binder(this);
             }
         };
 
