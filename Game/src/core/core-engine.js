@@ -3683,6 +3683,28 @@ if (__assCasting) { } else if (__isPvp) {
                         this.enemiesRemainingToSpawn--;
                     }
                 } else if (Game.enemies.length === 0) {
+                    const __transition = (() => {
+                        try {
+                            if (window.App && window.App.runtime && typeof window.App.runtime.runWaveClearTransition === 'function') {
+                                return window.App.runtime.runWaveClearTransition;
+                            }
+                        } catch (e) {}
+                        try { if (typeof window.runWaveClearTransition === 'function') return window.runWaveClearTransition; } catch (e) {}
+                        return null;
+                    })();
+                    if (typeof __transition === 'function') {
+                        const __ok = __transition({
+                            waveManager: this,
+                            game: Game,
+                            shop: Shop,
+                            createDamageTextFn: createDamageText,
+                            unlockAssassinFn: unlockAssassin,
+                            assassinUnlockWave: ASSASSIN_UNLOCK_WAVE
+                        });
+                        if (__ok) return;
+                    }
+
+                    // Safety fallback to keep runtime stable if wave-transition module is unavailable.
                     this.active = false;
 
                     if (!Game.endlessMode && this.isBossWave && (this.wave >= (this.finalWave || 20))) {
@@ -3707,7 +3729,7 @@ if (__assCasting) { } else if (__isPvp) {
                             if (__p && __p.hp > 0 && typeof __p.heal === 'function') __p.heal(__p.maxHp * 0.3);
                         }
                     });
-}
+                }
             },
             spawnEnemy() {
                 const __pickType = (() => {

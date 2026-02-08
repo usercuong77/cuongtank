@@ -14,6 +14,7 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - `DONE`: wave progression/scaling rules extracted from `core-engine.js` to `core-wave-rules.js`.
 - `DONE`: enemy spawn pool/placement rules extracted from `core-engine.js` to `core-spawn-rules.js`.
 - `DONE`: wave-start lifecycle (revive/spawn-count/boss HUD) extracted from `core-engine.js` to `core-wave-start-rules.js`.
+- `DONE`: wave-clear transition (victory/next-wave/shop heal flow) extracted from `core-engine.js` to `core-wave-transition-rules.js`.
 - `DONE`: legacy monolith removed from live runtime and archived at:
   - `Backup/archive/runtime-legacy/game.monolith.js`
 - `DONE`: automated guards prevent monolith regressions.
