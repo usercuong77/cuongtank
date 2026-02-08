@@ -69,6 +69,34 @@
         return fallback;
     };
 
+    // Compatibility publisher for modules that need App namespace + legacy globals.
+    App.compat = App.compat || {};
+    App.compat.expose = App.compat.expose || function(spec){
+        const payload = (spec && typeof spec === 'object') ? spec : {};
+        const runtime = (payload.runtime && typeof payload.runtime === 'object') ? payload.runtime : null;
+        const config = (payload.config && typeof payload.config === 'object') ? payload.config : null;
+        const rules = (payload.rules && typeof payload.rules === 'object') ? payload.rules : null;
+        const globals = (payload.globals && typeof payload.globals === 'object') ? payload.globals : null;
+        try {
+            if (runtime) {
+                App.runtime = App.runtime || {};
+                Object.keys(runtime).forEach((k) => { App.runtime[k] = runtime[k]; });
+            }
+            if (config) {
+                App.config = App.config || {};
+                Object.keys(config).forEach((k) => { App.config[k] = config[k]; });
+            }
+            if (rules) {
+                App.rules = App.rules || {};
+                Object.keys(rules).forEach((k) => { App.rules[k] = rules[k]; });
+            }
+            if (globals) {
+                Object.keys(globals).forEach((k) => { root[k] = globals[k]; });
+            }
+        } catch(e){}
+        return payload;
+    };
+
     // Runtime boot order contract (verified by runtime-order-guard.js).
     App.boot = App.boot || {};
     App.boot.expectedRuntimeScripts = App.boot.expectedRuntimeScripts || [

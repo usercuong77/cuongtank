@@ -78,22 +78,40 @@
 
     // Expose skill resolvers via App/runtime with global aliases.
     try {
-        app.runtime = app.runtime || {};
-        app.rules = app.rules || {};
         const tankSystemsMap = getTankSystemsMap();
         const labelMap = getSystemSkillLabelHtmlEn();
         const assassinPvpCooldownMap = getAssassinPvpSkillCooldowns();
-        app.runtime.getTankSystem = getTankSystem;
-        app.runtime.getSystemSkillDef = getSystemSkillDef;
-        app.runtime.getSystemSkillCooldowns = getSystemSkillCooldowns;
-        app.rules.systems = tankSystemsMap;
-        app.rules.systemSkillLabelEn = labelMap;
-        app.rules.assassinPvpSkillCooldowns = assassinPvpCooldownMap;
-        window.getTankSystem = getTankSystem;
-        window.getSystemSkillDef = getSystemSkillDef;
-        window.getSystemSkillCooldowns = getSystemSkillCooldowns;
+        const runtimeExports = {
+            getTankSystem: getTankSystem,
+            getSystemSkillDef: getSystemSkillDef,
+            getSystemSkillCooldowns: getSystemSkillCooldowns
+        };
+        const rulesExports = {
+            systems: tankSystemsMap,
+            systemSkillLabelEn: labelMap,
+            assassinPvpSkillCooldowns: assassinPvpCooldownMap
+        };
         // Backward-compatible globals used by older QA/game helpers.
-        window.SYSTEM_SKILL_LABEL_HTML_EN = labelMap;
-        window.ASSASSIN_PVP_SKILL_COOLDOWNS = assassinPvpCooldownMap;
+        const globalExports = {
+            getTankSystem: getTankSystem,
+            getSystemSkillDef: getSystemSkillDef,
+            getSystemSkillCooldowns: getSystemSkillCooldowns,
+            SYSTEM_SKILL_LABEL_HTML_EN: labelMap,
+            ASSASSIN_PVP_SKILL_COOLDOWNS: assassinPvpCooldownMap
+        };
+
+        if (app.compat && typeof app.compat.expose === 'function') {
+            app.compat.expose({
+                runtime: runtimeExports,
+                rules: rulesExports,
+                globals: globalExports
+            });
+        } else {
+            app.runtime = app.runtime || {};
+            app.rules = app.rules || {};
+            Object.keys(runtimeExports).forEach((k) => { app.runtime[k] = runtimeExports[k]; });
+            Object.keys(rulesExports).forEach((k) => { app.rules[k] = rulesExports[k]; });
+            Object.keys(globalExports).forEach((k) => { window[k] = globalExports[k]; });
+        }
     } catch (e) {}
 })();

@@ -395,44 +395,63 @@ const __pvpTuningData = (window.App && window.App.data && window.App.data.pvpTun
         // Phase 3 kickoff: expose PvP config/helpers through App runtime with global aliases.
         try {
             const __app = window.App || (window.App = {});
-            __app.runtime = __app.runtime || {};
-            __app.config = __app.config || {};
-            __app.rules = __app.rules || {};
-            __app.runtime.getPvpAmmoLocale = getPvpAmmoLocale;
-            __app.runtime.getPvpItemLocale = getPvpItemLocale;
-            __app.runtime.sanitizePvpLoadouts = sanitizePvpLoadouts;
-            __app.runtime.getPvpLoadoutByPid = getPvpLoadoutByPid;
-            __app.runtime.pvpHasItem = pvpHasItem;
-            __app.runtime.pvpGetAmmoByPlayer = pvpGetAmmoByPlayer;
-            __app.runtime.pvpApplyLoadoutToPlayer = pvpApplyLoadoutToPlayer;
-            __app.runtime.pvpApplyCdPenalty = pvpApplyCdPenalty;
-            __app.runtime.pvpApplyReveal = pvpApplyReveal;
-            __app.runtime.pvpApplySkillHunterRefund = pvpApplySkillHunterRefund;
-            __app.runtime.pvpBulletDamageForTarget = pvpBulletDamageForTarget;
-            __app.runtime.pvpApplySystemPassivesOnHit = pvpApplySystemPassivesOnHit;
-            __app.runtime.pvpApplyBulletOnHit = pvpApplyBulletOnHit;
-            __app.config.pvpAmmoTypes = PVP_AMMO_TYPES;
-            __app.config.pvpItemTypes = PVP_ITEM_TYPES;
-            __app.config.pvpDefaultLoadout = PVP_DEFAULT_LOADOUT;
-            __app.config.pvpLoadoutStorageKey = PVP_LOADOUT_STORAGE_KEY;
-            __app.config.pvpTuning = __pvpTuningData;
-            __app.rules.pvp = Object.freeze({
+            const runtimeExports = {
+                getPvpAmmoLocale: getPvpAmmoLocale,
+                getPvpItemLocale: getPvpItemLocale,
+                sanitizePvpLoadouts: sanitizePvpLoadouts,
+                getPvpLoadoutByPid: getPvpLoadoutByPid,
+                pvpHasItem: pvpHasItem,
+                pvpGetAmmoByPlayer: pvpGetAmmoByPlayer,
+                pvpApplyLoadoutToPlayer: pvpApplyLoadoutToPlayer,
+                pvpApplyCdPenalty: pvpApplyCdPenalty,
+                pvpApplyReveal: pvpApplyReveal,
+                pvpApplySkillHunterRefund: pvpApplySkillHunterRefund,
+                pvpBulletDamageForTarget: pvpBulletDamageForTarget,
+                pvpApplySystemPassivesOnHit: pvpApplySystemPassivesOnHit,
+                pvpApplyBulletOnHit: pvpApplyBulletOnHit
+            };
+            const configExports = {
+                pvpAmmoTypes: PVP_AMMO_TYPES,
+                pvpItemTypes: PVP_ITEM_TYPES,
+                pvpDefaultLoadout: PVP_DEFAULT_LOADOUT,
+                pvpLoadoutStorageKey: PVP_LOADOUT_STORAGE_KEY,
+                pvpTuning: __pvpTuningData
+            };
+            const pvpRule = Object.freeze({
                 ammoTypes: PVP_AMMO_TYPES,
                 itemTypes: PVP_ITEM_TYPES,
                 defaultLoadout: PVP_DEFAULT_LOADOUT,
                 loadoutStorageKey: PVP_LOADOUT_STORAGE_KEY,
                 tuning: __pvpTuningData
             });
+            const globalExports = {
+                getPvpAmmoLocale: getPvpAmmoLocale,
+                getPvpItemLocale: getPvpItemLocale,
+                sanitizePvpLoadouts: sanitizePvpLoadouts,
+                getPvpLoadoutByPid: getPvpLoadoutByPid,
+                pvpHasItem: pvpHasItem,
+                pvpGetAmmoByPlayer: pvpGetAmmoByPlayer,
+                pvpApplyLoadoutToPlayer: pvpApplyLoadoutToPlayer,
+                pvpBulletDamageForTarget: pvpBulletDamageForTarget,
+                pvpApplyBulletOnHit: pvpApplyBulletOnHit
+            };
 
-            window.getPvpAmmoLocale = getPvpAmmoLocale;
-            window.getPvpItemLocale = getPvpItemLocale;
-            window.sanitizePvpLoadouts = sanitizePvpLoadouts;
-            window.getPvpLoadoutByPid = getPvpLoadoutByPid;
-            window.pvpHasItem = pvpHasItem;
-            window.pvpGetAmmoByPlayer = pvpGetAmmoByPlayer;
-            window.pvpApplyLoadoutToPlayer = pvpApplyLoadoutToPlayer;
-            window.pvpBulletDamageForTarget = pvpBulletDamageForTarget;
-            window.pvpApplyBulletOnHit = pvpApplyBulletOnHit;
+            if (__app.compat && typeof __app.compat.expose === 'function') {
+                __app.compat.expose({
+                    runtime: runtimeExports,
+                    config: configExports,
+                    rules: { pvp: pvpRule },
+                    globals: globalExports
+                });
+            } else {
+                __app.runtime = __app.runtime || {};
+                __app.config = __app.config || {};
+                __app.rules = __app.rules || {};
+                Object.keys(runtimeExports).forEach((k) => { __app.runtime[k] = runtimeExports[k]; });
+                Object.keys(configExports).forEach((k) => { __app.config[k] = configExports[k]; });
+                __app.rules.pvp = pvpRule;
+                Object.keys(globalExports).forEach((k) => { window[k] = globalExports[k]; });
+            }
         } catch (e) {}
 
 
