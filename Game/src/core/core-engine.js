@@ -2753,6 +2753,13 @@ if (__assCasting) { } else if (__isPvp) {
                 const isPvpMode = (Game.mode === 'PVP_DUEL_AIM');
                 let rawAmount = amount;
                 const juggerActive = (this.systemId === 'juggernaut' && this.buffs.juggerShield && this.buffs.juggerShield.active && now <= this.buffs.juggerShield.endTime);
+                const defaultVampActive = (
+                    this.systemId === 'default' &&
+                    this.skills &&
+                    this.skills.vampirism &&
+                    this.skills.vampirism.active &&
+                    now <= (this.skills.vampirism.endTime || 0)
+                );
 
                 // Admin cheat: invulnerability.
                 if (this.invulnerable) {
@@ -2811,6 +2818,8 @@ if (__assCasting) { } else if (__isPvp) {
 
                 // When Siege is active: reduce incoming damage by 60%.
                 if (this.buffs.siege && this.buffs.siege.active) modAmount *= 0.4;
+                // Default system R (Vampirism): reduce incoming damage by 70%.
+                if (defaultVampActive) modAmount *= 0.3;
 
                 if (isPvpMode) {
                     const srcType = source && source.type ? String(source.type) : '';
@@ -2846,7 +2855,7 @@ if (__assCasting) { } else if (__isPvp) {
                     }
                 }
 
-                const hasShield = (this.buffs.shield.active || juggerActive || (this.buffs.siege && this.buffs.siege.active));
+                const hasShield = (this.buffs.shield.active || juggerActive || (this.buffs.siege && this.buffs.siege.active) || defaultVampActive);
                 if (!hasShield && modAmount > 0 && this.systemId !== 'assassin') {
                     const __pidPrevW = Game.__uiPid;
                     try { Game.__uiPid = (this.pid || 1); this.loseCurrentWeapon(); }
