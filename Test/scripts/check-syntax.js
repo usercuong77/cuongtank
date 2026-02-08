@@ -8,7 +8,7 @@ const testRoot = path.resolve(__dirname, '..');
 const workspaceRoot = path.resolve(testRoot, '..');
 
 const includeDirAbs = [
-  path.join(workspaceRoot, 'Game', 'assets', 'js', 'runtime'),
+  path.join(workspaceRoot, 'Game', 'src'),
   path.join(testRoot, 'tests'),
   path.join(testRoot, 'scripts')
 ];

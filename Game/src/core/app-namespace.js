@@ -77,6 +77,8 @@
         'bgm.js',
         'welcome.js',
         'core-config-base.js',
+        'skill-systems-data.js',
+        'pvp-loadout-data.js',
         'systems-pvp.js',
         'systems-skills.js',
         'core-engine.js',
@@ -104,11 +106,15 @@
         try {
             const nodes = document.querySelectorAll('script[src]');
             for (let i = 0; i < nodes.length; i++) {
-                const src = String(nodes[i].getAttribute('src') || '');
-                const mark = 'assets/js/runtime/';
-                const idx = src.indexOf(mark);
-                if (idx < 0) continue;
-                const name = src.slice(idx + mark.length).trim();
+                const src = String(nodes[i].getAttribute('src') || '').trim();
+                if (!src) continue;
+
+                const cleanSrc = src.split('#')[0].split('?')[0];
+                const slash = cleanSrc.lastIndexOf('/');
+                const name = slash >= 0 ? cleanSrc.slice(slash + 1) : cleanSrc;
+                if (!name || !/\.js$/i.test(name)) continue;
+                if (expected.indexOf(name) < 0) continue;
+
                 loaded.push(name);
                 if (seen[name]) duplicates.push(name);
                 seen[name] = true;

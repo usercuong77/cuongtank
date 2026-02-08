@@ -9,16 +9,14 @@
 ## Game Runtime
 - `Game/index.html`: shell layout, runtime script load order
 - `Game/assets/css/main.css`: full game stylesheet
-- `Game/assets/js/runtime/`: runtime modules (single source of truth)
+- `Game/src/`: runtime modules grouped by domain (single source of truth)
 - `Game/Music/`: game music assets
 
-## Runtime Modules (Game/assets/js/runtime)
-- `app-namespace.js`: boot namespace + shared resolvers + expected runtime script contract
-- `runtime-order-guard.js`: validates runtime load order and reports to `App.meta.runtimeOrder`
-- `core-*`: config/state/engine/game-loop bootstrap and core gameplay flows
-- `systems-*`: skill and PvP systems
-- `ui-*`: menu, preview, HUD, VFX, shop, lifecycle flows
-- `qa-hooks.js`: QA hooks exposed as `window.__qa` when running with `?qa=1`
+## Runtime Modules (Game/src)
+- `core/*`: boot namespace, config/state/engine/game-loop, save flow, QA hooks
+- `systems/*`: skill and PvP systems
+- `ui/*`: menu, preview, HUD, VFX, shop, lifecycle, welcome flow
+- `data/*`: i18n text + localization sync
 
 ## Legacy Archive
 - `Backup/archive/runtime-legacy/game.monolith.js`: archived legacy monolith (not used by game)

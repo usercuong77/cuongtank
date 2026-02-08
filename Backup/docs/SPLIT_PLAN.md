@@ -5,7 +5,7 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 
 ## Completion Status
 - `DONE`: CSS externalized to `Game/assets/css/main.css`.
-- `DONE`: runtime logic split into ordered modules under `Game/assets/js/runtime/`.
+- `DONE`: runtime logic split into ordered modules under `Game/src/`.
 - `DONE`: `index.html` loads runtime modules in explicit, validated order.
 - `DONE`: legacy monolith removed from live runtime and archived at:
   - `Backup/archive/runtime-legacy/game.monolith.js`
@@ -15,7 +15,7 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - `App.boot.expectedRuntimeScripts` defines required runtime order.
 - `runtime-order-guard.js` validates load order at boot and reports to `App.meta.runtimeOrder`.
 - `Test/scripts/check-static-links.js` now fails if:
-  - any local JS is loaded outside `assets/js/runtime/`
+  - any local JS is loaded outside `src/`
   - legacy monolith file appears again in `Game/assets/js/game.js`
   - `index.html` references `assets/js/game.js`
 - `Test/tests/runtime.spec.js` verifies:
@@ -32,4 +32,4 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
   - `Test/run-visual-update.bat`
 
 ## Operational Rule
-For game changes, update only runtime modules in `Game/assets/js/runtime/` and keep legacy files in `Backup/archive/` only.
+For game changes, update only runtime modules in `Game/src/` and keep legacy files in `Backup/archive/` only.

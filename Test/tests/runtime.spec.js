@@ -61,10 +61,11 @@ test('legacy runtime snapshots are not loaded by index', async ({ page }) => {
     const nodes = Array.from(document.querySelectorAll('script[src]'));
     return nodes
       .map((n) => String(n.getAttribute('src') || ''))
+      .map((src) => String(src || '').split('?')[0].split('#')[0].trim())
+      .filter((src) => src.startsWith('src/'))
       .map((src) => {
-        const mark = 'assets/js/runtime/';
-        const idx = src.indexOf(mark);
-        return idx >= 0 ? src.slice(idx + mark.length).trim() : '';
+        const i = src.lastIndexOf('/');
+        return i >= 0 ? src.slice(i + 1) : src;
       })
       .filter(Boolean);
   });

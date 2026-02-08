@@ -8,7 +8,7 @@ const workspaceRoot = path.resolve(testRoot, '..');
 const gameRoot = path.join(workspaceRoot, 'Game');
 const indexPath = path.join(gameRoot, 'index.html');
 const cssPath = path.join(gameRoot, 'assets', 'css', 'main.css');
-const appNsPath = path.join(gameRoot, 'assets', 'js', 'runtime', 'app-namespace.js');
+const appNsPath = path.join(gameRoot, 'src', 'core', 'app-namespace.js');
 const legacyMonolithPath = path.join(gameRoot, 'assets', 'js', 'game.js');
 
 function rel(p) {
@@ -73,16 +73,23 @@ function parseExpectedRuntimeScripts(appNsSource) {
   return out.filter(Boolean);
 }
 
+function getScriptFileName(src) {
+  const clean = normalizeLocalRef(src);
+  if (!clean) return '';
+  const slash = clean.lastIndexOf('/');
+  return slash >= 0 ? clean.slice(slash + 1) : clean;
+}
+
 function extractRuntimeScriptsFromIndex(indexHtml) {
   const list = [];
   const rx = /<script[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
   let m;
   while ((m = rx.exec(indexHtml)) !== null) {
     const src = normalizeLocalRef(m[1]);
-    const mark = 'assets/js/runtime/';
-    const idx = src.indexOf(mark);
-    if (idx < 0) continue;
-    list.push(src.slice(idx + mark.length));
+    if (!src.startsWith('src/')) continue;
+    const name = getScriptFileName(src);
+    if (!name) continue;
+    list.push(name);
   }
   return list;
 }
@@ -130,8 +137,9 @@ if (fs.existsSync(cssPath)) {
 
 const runtimeLoaded = extractRuntimeScriptsFromIndex(indexHtml);
 const nonRuntimeLocalScripts = scriptSrcs.filter((src) => (
-  src.startsWith('assets/js/') &&
-  !src.startsWith('assets/js/runtime/')
+  isLocalAssetRef(src) &&
+  /\.js$/i.test(src) &&
+  !src.startsWith('src/')
 ));
 const hasLegacyMonolithTag = scriptSrcs.includes('assets/js/game.js');
 const runtimeDup = [];
@@ -194,7 +202,7 @@ if (hasLegacyMonolithTag) {
 }
 
 if (nonRuntimeLocalScripts.length > 0) {
-  console.error('\n[check:assets] Found local JS scripts outside runtime folder:');
+  console.error('\n[check:assets] Found local JS scripts outside src/ runtime layout:');
   for (const s of nonRuntimeLocalScripts) console.error(`  - ${s}`);
 }
 

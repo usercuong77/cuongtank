@@ -11,5 +11,5 @@ Archived files:
 - `game.monolith.js` (previous single-file runtime before full split)
 
 Purpose:
-- keep historical reference while reducing noise in `assets/js/runtime/`
+- keep historical reference while reducing noise in `Game/src/`
 - avoid accidental import/use in current runtime pipeline
