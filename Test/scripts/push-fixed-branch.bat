@@ -11,6 +11,21 @@ if not defined TARGET_BRANCH (
 )
 shift
 
+REM Locate npm (PATH first, then common install locations)
+set "NPM_CMD="
+if exist "C:\Program Files\nodejs\npm.cmd" (
+  set "NPM_CMD=C:\Program Files\nodejs\npm.cmd"
+)
+if not defined NPM_CMD (
+  for /f "delims=" %%i in ('where npm.cmd 2^>nul') do (
+    if not defined NPM_CMD set "NPM_CMD=%%i"
+  )
+)
+if not defined NPM_CMD (
+  echo [ERROR] npm.cmd not found. Please install Node.js first.
+  exit /b 1
+)
+
 REM Locate git (PATH first, then common install locations)
 set "GIT_EXE=git"
 where git >nul 2>nul
@@ -42,6 +57,13 @@ if not defined CUR_BRANCH (
 )
 echo [INFO] Current branch: %CUR_BRANCH%
 echo [INFO] Target remote branch: origin/%TARGET_BRANCH%
+
+set "CHECK_SCRIPT=check:full"
+if /I "%TARGET_BRANCH%"=="main" set "CHECK_SCRIPT=check:release"
+if /I "%TARGET_BRANCH%"=="main" if /I not "%CUR_BRANCH%"=="main" (
+  echo [ERROR] release-main requires current branch to be main.
+  exit /b 1
+)
 
 REM Build commit message from args or auto timestamp
 set "COMMIT_MSG="
@@ -81,6 +103,41 @@ if %errorlevel%==0 (
     echo [ERROR] Commit failed.
     exit /b 1
   )
+)
+
+if not exist "Test\package.json" (
+  echo [ERROR] Missing Test\package.json. Cannot run quality gate.
+  exit /b 1
+)
+
+if not exist "Test\node_modules\@playwright\test" (
+  echo [INFO] Dependencies not found. Running npm ci in Test...
+  pushd "Test"
+  call "%NPM_CMD%" ci
+  set "EC=%ERRORLEVEL%"
+  popd
+  if not "%EC%"=="0" (
+    echo [ERROR] npm ci failed.
+    exit /b %EC%
+  )
+)
+
+echo [INFO] Running quality gate: %CHECK_SCRIPT%
+pushd "Test"
+call "%NPM_CMD%" run %CHECK_SCRIPT%
+set "EC=%ERRORLEVEL%"
+popd
+if not "%EC%"=="0" (
+  echo [ERROR] Quality gate failed. Push canceled.
+  exit /b %EC%
+)
+
+"%GIT_EXE%" status --porcelain | findstr /r "." >nul
+if not errorlevel 1 (
+  echo [ERROR] Working tree is not clean after quality gate.
+  echo [HINT] Commit or clean generated files, then retry push.
+  "%GIT_EXE%" status --short
+  exit /b 1
 )
 
 REM Push current HEAD to target branch without switching local branch

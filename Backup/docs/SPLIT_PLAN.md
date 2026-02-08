@@ -46,6 +46,9 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - visual shortcuts:
   - `Test/run-visual-check.bat`
   - `Test/run-visual-update.bat`
+- push helpers:
+  - `push-dev.bat` blocks push until `check:full` passes
+  - `release-main.bat` blocks push until `check:release` passes (`main` branch only)
 
 ## Operational Rule
 For game changes, update only runtime modules in `Game/src/` and keep legacy files in `Backup/archive/` only.

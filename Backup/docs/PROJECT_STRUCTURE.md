@@ -38,8 +38,8 @@
 - `Test/tests/smoke.spec.js`, `Test/tests/gameplay.spec.js`, `Test/tests/visual.spec.js`: gameplay and UI test suites
 
 ## Push Helpers
-- `Test/push-dev.bat`: commit + push current branch to `origin/codex/ci-setup`
-- `Test/release-main.bat`: release push to `origin/main`
+- `Test/push-dev.bat`: commit + run `check:full` gate + push current HEAD to `origin/codex/ci-setup`
+- `Test/release-main.bat`: commit + run `check:release` gate + push current HEAD to `origin/main` (requires local branch `main`)
 
 ## Generated Output
 - `Test/node_modules/`: npm dependencies
