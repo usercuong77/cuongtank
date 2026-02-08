@@ -1,25 +1,33 @@
-﻿const PVP_AIM_LEAD_MAX_MS = PVP_CONFIG.aimLeadMaxMs;
-        const PVP_AIM_LEAD_FACTOR = PVP_CONFIG.aimLeadFactor;
-        const PVP_AIM_MAX_TURN = PVP_CONFIG.aimMaxTurn;
-        const EASY_AUTO_AIM_LEAD_BLEND = PVP_CONFIG.easyAutoAimLeadBlend; // Easy: 55% predictive lead.
-        const COOP_AUTO_AIM_LEAD_BLEND = PVP_CONFIG.coopAutoAimLeadBlend; // 2P Bot: 30% predictive lead.
-        const AUTO_AIM_LEAD_MAX_MS = PVP_CONFIG.autoAimLeadMaxMs;
-        const PVP_SKILL_DAMAGE_MULT = PVP_CONFIG.skillDamageMult;
-        const PVP_HARD_CC_CAP_MS = PVP_CONFIG.hardCcCapMs;
-        const PVP_HARD_CC_DR_WINDOW_MS = PVP_CONFIG.hardCcDrWindowMs;
-        const PVP_HARD_CC_DR_MULT = PVP_CONFIG.hardCcDrMult;
-        const PVP_SKILL_GLOBAL_LOCKOUT_MS = PVP_CONFIG.skillGlobalLockoutMs;
-        const PVP_PASSIVE_DEFAULT_HITS_REQ = PVP_CONFIG.passive.defaultHitsReq;
-        const PVP_PASSIVE_DEFAULT_SLOW_MS = PVP_CONFIG.passive.defaultSlowMs;
-        const PVP_PASSIVE_DEFAULT_SLOW_FACTOR = PVP_CONFIG.passive.defaultSlowFactor;
-        const PVP_PASSIVE_ENGINEER_SKILL_MARK_BONUS = PVP_CONFIG.passive.engineerSkillMarkBonus;
-        const PVP_PASSIVE_MAGE_STACK_REQ = PVP_CONFIG.passive.mageStackReq;
-        const PVP_PASSIVE_MAGE_BURST_DAMAGE = PVP_CONFIG.passive.mageBurstDamage;
-        const PVP_PASSIVE_MAGE_BURST_RADIUS = PVP_CONFIG.passive.mageBurstRadius;
-        const PVP_PASSIVE_MAGE_BURST_SPLASH_MULT = PVP_CONFIG.passive.mageBurstSplashMult;
+const __pvpTuningData = (window.App && window.App.data && window.App.data.pvpTuning)
+    ? window.App.data.pvpTuning
+    : (window.PVP_TUNING_CONFIG || ((typeof PVP_CONFIG !== 'undefined') ? PVP_CONFIG : null) || {});
+        const __pvpPassiveTuning = (__pvpTuningData && __pvpTuningData.passive) ? __pvpTuningData.passive : {};
+        const PVP_AIM_LEAD_MAX_MS = (__pvpTuningData.aimLeadMaxMs != null) ? __pvpTuningData.aimLeadMaxMs : 390;
+        const PVP_AIM_LEAD_FACTOR = (__pvpTuningData.aimLeadFactor != null) ? __pvpTuningData.aimLeadFactor : 1.34;
+        const PVP_AIM_MAX_TURN = (__pvpTuningData.aimMaxTurn != null) ? __pvpTuningData.aimMaxTurn : 0.17;
+        const EASY_AUTO_AIM_LEAD_BLEND = (__pvpTuningData.easyAutoAimLeadBlend != null) ? __pvpTuningData.easyAutoAimLeadBlend : 0.55; // Easy: 55% predictive lead.
+        const COOP_AUTO_AIM_LEAD_BLEND = (__pvpTuningData.coopAutoAimLeadBlend != null) ? __pvpTuningData.coopAutoAimLeadBlend : 0.30; // 2P Bot: 30% predictive lead.
+        const AUTO_AIM_LEAD_MAX_MS = (__pvpTuningData.autoAimLeadMaxMs != null) ? __pvpTuningData.autoAimLeadMaxMs : 300;
+        const PVP_SKILL_DAMAGE_MULT = (__pvpTuningData.skillDamageMult != null) ? __pvpTuningData.skillDamageMult : 0.85;
+        const PVP_HARD_CC_CAP_MS = (__pvpTuningData.hardCcCapMs != null) ? __pvpTuningData.hardCcCapMs : 1000;
+        const PVP_HARD_CC_DR_WINDOW_MS = (__pvpTuningData.hardCcDrWindowMs != null) ? __pvpTuningData.hardCcDrWindowMs : 3000;
+        const PVP_HARD_CC_DR_MULT = (__pvpTuningData.hardCcDrMult != null) ? __pvpTuningData.hardCcDrMult : 0.60;
+        const PVP_SKILL_GLOBAL_LOCKOUT_MS = (__pvpTuningData.skillGlobalLockoutMs != null) ? __pvpTuningData.skillGlobalLockoutMs : 300;
+        const PVP_PASSIVE_DEFAULT_HITS_REQ = (__pvpPassiveTuning.defaultHitsReq != null) ? __pvpPassiveTuning.defaultHitsReq : 5;
+        const PVP_PASSIVE_DEFAULT_SLOW_MS = (__pvpPassiveTuning.defaultSlowMs != null) ? __pvpPassiveTuning.defaultSlowMs : 800;
+        const PVP_PASSIVE_DEFAULT_SLOW_FACTOR = (__pvpPassiveTuning.defaultSlowFactor != null) ? __pvpPassiveTuning.defaultSlowFactor : 0.88;
+        const PVP_PASSIVE_ENGINEER_SKILL_MARK_BONUS = (__pvpPassiveTuning.engineerSkillMarkBonus != null) ? __pvpPassiveTuning.engineerSkillMarkBonus : 1.08;
+        const PVP_PASSIVE_MAGE_STACK_REQ = (__pvpPassiveTuning.mageStackReq != null) ? __pvpPassiveTuning.mageStackReq : 4;
+        const PVP_PASSIVE_MAGE_BURST_DAMAGE = (__pvpPassiveTuning.mageBurstDamage != null) ? __pvpPassiveTuning.mageBurstDamage : 22;
+        const PVP_PASSIVE_MAGE_BURST_RADIUS = (__pvpPassiveTuning.mageBurstRadius != null) ? __pvpPassiveTuning.mageBurstRadius : 95;
+        const PVP_PASSIVE_MAGE_BURST_SPLASH_MULT = (__pvpPassiveTuning.mageBurstSplashMult != null) ? __pvpPassiveTuning.mageBurstSplashMult : 0.60;
 
-                const __pvpData = (window.App && window.App.data && window.App.data.pvpLoadout) ? window.App.data.pvpLoadout : null;
-        const PVP_LOADOUT_STORAGE_KEY = (__pvpData && __pvpData.loadoutStorageKey) ? __pvpData.loadoutStorageKey : ((typeof window.PVP_LOADOUT_STORAGE_KEY !== 'undefined') ? window.PVP_LOADOUT_STORAGE_KEY : PVP_CONFIG.loadoutStorageKey);
+        const __pvpData = (window.App && window.App.data && window.App.data.pvpLoadout) ? window.App.data.pvpLoadout : null;
+        const PVP_LOADOUT_STORAGE_KEY = (__pvpData && __pvpData.loadoutStorageKey)
+            ? __pvpData.loadoutStorageKey
+            : ((typeof window.PVP_LOADOUT_STORAGE_KEY !== 'undefined')
+                ? window.PVP_LOADOUT_STORAGE_KEY
+                : ((__pvpTuningData && __pvpTuningData.loadoutStorageKey) ? __pvpTuningData.loadoutStorageKey : 'tankPvpLoadout_v1'));
         const PVP_AMMO_TYPES = (__pvpData && __pvpData.ammoTypes) ? __pvpData.ammoTypes : (window.PVP_AMMO_TYPES || {});
         const PVP_ITEM_TYPES = (__pvpData && __pvpData.itemTypes) ? __pvpData.itemTypes : (window.PVP_ITEM_TYPES || {});
         const PVP_AMMO_EN_TEXT = (__pvpData && __pvpData.ammoEnText) ? __pvpData.ammoEnText : (window.PVP_AMMO_EN_TEXT || {});
@@ -407,11 +415,13 @@
             __app.config.pvpItemTypes = PVP_ITEM_TYPES;
             __app.config.pvpDefaultLoadout = PVP_DEFAULT_LOADOUT;
             __app.config.pvpLoadoutStorageKey = PVP_LOADOUT_STORAGE_KEY;
+            __app.config.pvpTuning = __pvpTuningData;
             __app.rules.pvp = Object.freeze({
                 ammoTypes: PVP_AMMO_TYPES,
                 itemTypes: PVP_ITEM_TYPES,
                 defaultLoadout: PVP_DEFAULT_LOADOUT,
-                loadoutStorageKey: PVP_LOADOUT_STORAGE_KEY
+                loadoutStorageKey: PVP_LOADOUT_STORAGE_KEY,
+                tuning: __pvpTuningData
             });
 
             window.getPvpAmmoLocale = getPvpAmmoLocale;
@@ -424,5 +434,6 @@
             window.pvpBulletDamageForTarget = pvpBulletDamageForTarget;
             window.pvpApplyBulletOnHit = pvpApplyBulletOnHit;
         } catch (e) {}
+
 
 

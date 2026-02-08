@@ -1,6 +1,7 @@
 # Project Structure (Current)
 
 ## Top-Level Layout
+- `index.html`: root entry that redirects to `Game/index.html`
 - `Game/`: files required to run the game
 - `Test/`: automated test stack, QA scripts, and push helpers
 - `Backup/`: archive snapshots and backup docs
@@ -16,7 +17,7 @@
 - `core/*`: boot namespace, config/state/engine/game-loop, save flow, QA hooks
 - `systems/*`: skill and PvP systems
 - `ui/*`: menu, preview, HUD, VFX, shop, lifecycle, welcome flow
-- `data/*`: i18n text + localization sync
+- `data/*`: config/data modules (`i18n.js`, `skill-systems-data.js`, `pvp-tuning-data.js`, `pvp-loadout-data.js`)
 
 ## Legacy Archive
 - `Backup/archive/runtime-legacy/game.monolith.js`: archived legacy monolith (not used by game)

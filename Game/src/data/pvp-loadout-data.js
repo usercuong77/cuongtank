@@ -4,7 +4,10 @@
     const app = root.App || (root.App = {});
     app.data = app.data || {};
 
-const PVP_LOADOUT_STORAGE_KEY = PVP_CONFIG.loadoutStorageKey;
+    const pvpTuning = (app.data && app.data.pvpTuning)
+        ? app.data.pvpTuning
+        : (root.PVP_TUNING_CONFIG || ((typeof PVP_CONFIG !== 'undefined') ? PVP_CONFIG : null) || {});
+    const PVP_LOADOUT_STORAGE_KEY = String(pvpTuning.loadoutStorageKey || 'tankPvpLoadout_v1');
         const PVP_AMMO_TYPES = {
             ap40: {
                 id:'ap40',
@@ -248,29 +251,6 @@ const PVP_LOADOUT_STORAGE_KEY = PVP_CONFIG.loadoutStorageKey;
                 stats: ['Within 1.6s after enemy skill cast: +9% damage', 'Hit in window: refund 0.25s Q/E/R cooldown', 'Refund ICD: 2.2s']
             }
         };
-
-        // === PvP Localization + Loadout Resolver ===
-        function pvpLang(){
-            try { return (window.I18N && typeof window.I18N.lang === 'function') ? window.I18N.lang() : 'vi'; } catch(e){ return 'vi'; }
-        }
-        function getPvpAmmoLocale(ammoId){
-            const base = PVP_AMMO_TYPES && PVP_AMMO_TYPES[ammoId] ? PVP_AMMO_TYPES[ammoId] : null;
-            if (!base) return { id: ammoId, label: ammoId || 'unknown', desc: '', stats: [] };
-            if (pvpLang() === 'en' && PVP_AMMO_EN_TEXT[ammoId]) {
-                const en = PVP_AMMO_EN_TEXT[ammoId];
-                return { id: ammoId, label: en.label, desc: en.desc, stats: en.stats || [] };
-            }
-            return { id: ammoId, label: base.label || ammoId, desc: base.desc || '', stats: base.stats || [] };
-        }
-        function getPvpItemLocale(itemId){
-            const base = PVP_ITEM_TYPES && PVP_ITEM_TYPES[itemId] ? PVP_ITEM_TYPES[itemId] : null;
-            if (!base) return { id: itemId, label: itemId || 'unknown', desc: '', stats: [] };
-            if (pvpLang() === 'en' && PVP_ITEM_EN_TEXT[itemId]) {
-                const en = PVP_ITEM_EN_TEXT[itemId];
-                return { id: itemId, label: en.label, desc: en.desc, stats: en.stats || [] };
-            }
-            return { id: itemId, label: base.label || itemId, desc: base.desc || '', stats: base.stats || [] };
-        }
 
         const PVP_DEFAULT_LOADOUT = {
             p1: { ammo: 'ap40', items: ['composite_armor', 'cooldown_firewall', 'stealth_scrambler'] },

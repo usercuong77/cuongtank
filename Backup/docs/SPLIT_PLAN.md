@@ -7,6 +7,8 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 - `DONE`: CSS externalized to `Game/assets/css/main.css`.
 - `DONE`: runtime logic split into ordered modules under `Game/src/`.
 - `DONE`: `index.html` loads runtime modules in explicit, validated order.
+- `DONE`: PvP tuning config extracted into `Game/src/data/pvp-tuning-data.js` (aim/cc/passive/loadout-key).
+- `DONE`: PvP runtime resolves tuning from `App.data` first, then legacy globals/config fallback.
 - `DONE`: legacy monolith removed from live runtime and archived at:
   - `Backup/archive/runtime-legacy/game.monolith.js`
 - `DONE`: automated guards prevent monolith regressions.
@@ -22,6 +24,10 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
   - runtime order contract is valid in browser
   - legacy runtime snapshots are not loaded
   - monolith is archived and not loaded by index
+- PvP compatibility guarantees:
+  - tuning data is available via `App.data.pvpTuning`
+  - legacy alias `window.PVP_TUNING_CONFIG` is still provided
+  - `systems-pvp.js` keeps legacy global constants used by `core-engine.js`/`qa-hooks.js`
 
 ## Current Test Entry
 - `Test/run-test.bat` (single runner)
@@ -33,3 +39,4 @@ Keep gameplay stable while making the codebase easy to extend (new systems, ammo
 
 ## Operational Rule
 For game changes, update only runtime modules in `Game/src/` and keep legacy files in `Backup/archive/` only.
+Keep PvP/skill tuning and loadout config in `Game/src/data/*` (not inline in systems modules).

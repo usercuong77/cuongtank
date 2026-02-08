@@ -78,6 +78,7 @@
         'welcome.js',
         'core-config-base.js',
         'skill-systems-data.js',
+        'pvp-tuning-data.js',
         'pvp-loadout-data.js',
         'systems-pvp.js',
         'systems-skills.js',
