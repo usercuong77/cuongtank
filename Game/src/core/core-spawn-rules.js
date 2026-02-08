@@ -108,16 +108,76 @@
         };
     }
 
+    function resolveWaveEnemySpawnSafe(options) {
+        const opts = (options && typeof options === 'object') ? options : {};
+        const resolved = resolveWaveEnemySpawn(opts);
+        if (resolved && resolved.valid) return resolved;
+
+        // Safety fallback: legacy spawn search copied from engine behavior.
+        const rand = (typeof opts.randomFn === 'function') ? opts.randomFn : Math.random;
+        const typeKey = pickWaveEnemyType(Number(opts.wave || 1), !!opts.isBossWave, rand);
+
+        const cameraX = Number(opts.cameraX || 0);
+        const cameraY = Number(opts.cameraY || 0);
+        const viewportWidth = Math.max(1, Number(opts.viewportWidth || 0));
+        const viewportHeight = Math.max(1, Number(opts.viewportHeight || 0));
+        const worldWidth = Math.max(1, Number(opts.worldWidth || 0));
+        const worldHeight = Math.max(1, Number(opts.worldHeight || 0));
+        const obstacles = Array.isArray(opts.obstacles) ? opts.obstacles : [];
+        const checkCircleRectFn = (typeof opts.checkCircleRectFn === 'function') ? opts.checkCircleRectFn : null;
+
+        let x = 0;
+        let y = 0;
+        let valid = false;
+        let attempts = 0;
+        while (!valid && attempts < 50) {
+            const edge = Math.floor(rand() * 4);
+            const buffer = 100;
+            switch (edge) {
+                case 0:
+                    x = cameraX + rand() * viewportWidth;
+                    y = cameraY - buffer;
+                    break;
+                case 1:
+                    x = cameraX + viewportWidth + buffer;
+                    y = cameraY + rand() * viewportHeight;
+                    break;
+                case 2:
+                    x = cameraX + rand() * viewportWidth;
+                    y = cameraY + viewportHeight + buffer;
+                    break;
+                default:
+                    x = cameraX - buffer;
+                    y = cameraY + rand() * viewportHeight;
+                    break;
+            }
+            x = Math.max(100, Math.min(worldWidth - 100, x));
+            y = Math.max(100, Math.min(worldHeight - 100, y));
+
+            let hitObstacle = false;
+            if (checkCircleRectFn) {
+                for (let i = 0; i < obstacles.length; i++) {
+                    if (checkCircleRectFn({ x: x, y: y, radius: 80 }, obstacles[i])) { hitObstacle = true; break; }
+                }
+            }
+            if (!hitObstacle) valid = true;
+            attempts++;
+        }
+        return { typeKey: typeKey, x: x, y: y, valid: valid, attempts: attempts };
+    }
+
     try {
         const app = window.App || (window.App = {});
         app.runtime = app.runtime || {};
         app.runtime.pickWaveEnemyType = pickWaveEnemyType;
         app.runtime.findEdgeSpawnPoint = findEdgeSpawnPoint;
         app.runtime.resolveWaveEnemySpawn = resolveWaveEnemySpawn;
+        app.runtime.resolveWaveEnemySpawnSafe = resolveWaveEnemySpawnSafe;
 
         // Backward-compatible aliases for transitional runtime usage.
         window.pickWaveEnemyType = pickWaveEnemyType;
         window.findEdgeSpawnPoint = findEdgeSpawnPoint;
         window.resolveWaveEnemySpawn = resolveWaveEnemySpawn;
+        window.resolveWaveEnemySpawnSafe = resolveWaveEnemySpawnSafe;
     } catch (e) {}
 })();

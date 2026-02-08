@@ -3734,6 +3734,12 @@ if (__assCasting) { } else if (__isPvp) {
             spawnEnemy() {
                 const __resolveSpawn = (() => {
                     try {
+                        if (window.App && window.App.runtime && typeof window.App.runtime.resolveWaveEnemySpawnSafe === 'function') {
+                            return window.App.runtime.resolveWaveEnemySpawnSafe;
+                        }
+                    } catch (e) {}
+                    try { if (typeof window.resolveWaveEnemySpawnSafe === 'function') return window.resolveWaveEnemySpawnSafe; } catch (e) {}
+                    try {
                         if (window.App && window.App.runtime && typeof window.App.runtime.resolveWaveEnemySpawn === 'function') {
                             return window.App.runtime.resolveWaveEnemySpawn;
                         }
@@ -3742,61 +3748,24 @@ if (__assCasting) { } else if (__isPvp) {
                     return null;
                 })();
 
-                let resolved = null;
-                if (typeof __resolveSpawn === 'function') {
-                    resolved = __resolveSpawn({
-                        wave: this.wave,
-                        isBossWave: this.isBossWave,
-                        cameraX: Camera.x,
-                        cameraY: Camera.y,
-                        viewportWidth: canvas.width,
-                        viewportHeight: canvas.height,
-                        worldWidth: WORLD_WIDTH,
-                        worldHeight: WORLD_HEIGHT,
-                        obstacles: Game.obstacles,
-                        checkCircleRectFn: checkCircleRect,
-                        maxAttempts: 50,
-                        edgeBuffer: 100,
-                        worldPadding: 100,
-                        obstacleRadius: 80,
-                        randomFn: Math.random
-                    });
-                }
-
-                if (!resolved || !resolved.valid) {
-                    // Safety fallback to keep runtime stable if spawn-rules module is unavailable.
-                    let typeKey;
-                    if (this.isBossWave) typeKey = 'BOSS';
-                    else {
-                        const pool = ['RED'];
-                        if (this.wave >= 2) pool.push('YELLOW');
-                        if (this.wave >= 3) pool.push('YELLOW', 'BLACK');
-                        if (this.wave >= 4) pool.push('BLACK', 'BLACK', 'PURPLE');
-                        if (this.wave >= 5) pool.push('PURPLE', 'PURPLE');
-                        typeKey = pool[Math.floor(Math.random() * pool.length)];
-                    }
-                    let x = 0, y = 0, valid = false;
-                    let attempts = 0;
-                    while (!valid && attempts < 50) {
-                        const edge = Math.floor(Math.random() * 4);
-                        const buffer = 100;
-                        switch (edge) {
-                            case 0: x = Camera.x + Math.random() * canvas.width; y = Camera.y - buffer; break;
-                            case 1: x = Camera.x + canvas.width + buffer; y = Camera.y + Math.random() * canvas.height; break;
-                            case 2: x = Camera.x + Math.random() * canvas.width; y = Camera.y + canvas.height + buffer; break;
-                            default: x = Camera.x - buffer; y = Camera.y + Math.random() * canvas.height; break;
-                        }
-                        x = Math.max(100, Math.min(WORLD_WIDTH - 100, x));
-                        y = Math.max(100, Math.min(WORLD_HEIGHT - 100, y));
-                        let hitObs = false;
-                        for (let obs of Game.obstacles) {
-                            if (checkCircleRect({ x, y, radius: 80 }, obs)) { hitObs = true; break; }
-                        }
-                        if (!hitObs) valid = true;
-                        attempts++;
-                    }
-                    resolved = { typeKey: typeKey, x: x, y: y, valid: valid };
-                }
+                if (typeof __resolveSpawn !== 'function') return;
+                const resolved = __resolveSpawn({
+                    wave: this.wave,
+                    isBossWave: this.isBossWave,
+                    cameraX: Camera.x,
+                    cameraY: Camera.y,
+                    viewportWidth: canvas.width,
+                    viewportHeight: canvas.height,
+                    worldWidth: WORLD_WIDTH,
+                    worldHeight: WORLD_HEIGHT,
+                    obstacles: Game.obstacles,
+                    checkCircleRectFn: checkCircleRect,
+                    maxAttempts: 50,
+                    edgeBuffer: 100,
+                    worldPadding: 100,
+                    obstacleRadius: 80,
+                    randomFn: Math.random
+                });
 
                 if (resolved && resolved.valid) {
                     const sc = this.scaling || this.computeScaling();
