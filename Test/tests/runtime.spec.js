@@ -1,4 +1,9 @@
 const { test, expect } = require('@playwright/test');
+const fs = require('fs');
+const path = require('path');
+
+const workspaceRoot = path.resolve(__dirname, '..', '..');
+const legacyMonolithPath = path.join(workspaceRoot, 'Game', 'assets', 'js', 'game.js');
 
 test.beforeEach(async ({ page }) => {
   await page.addInitScript(() => {
@@ -75,4 +80,19 @@ test('legacy runtime snapshots are not loaded by index', async ({ page }) => {
   for (const name of legacy) {
     expect(loadedRuntimeScripts).not.toContain(name);
   }
+});
+
+test('legacy monolith is archived and never loaded by index', async ({ page }) => {
+  expect(fs.existsSync(legacyMonolithPath)).toBeFalsy();
+
+  await page.goto('/');
+  await dismissWelcome(page);
+
+  const loadedScripts = await page.evaluate(() => {
+    return Array.from(document.querySelectorAll('script[src]'))
+      .map((n) => String(n.getAttribute('src') || '').split('?')[0].split('#')[0].trim())
+      .filter(Boolean);
+  });
+
+  expect(loadedScripts).not.toContain('assets/js/game.js');
 });

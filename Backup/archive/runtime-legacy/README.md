@@ -8,6 +8,7 @@ Archived files:
 - `core-main-b.js`
 - `core-main.js`
 - `core.js`
+- `game.monolith.js` (previous single-file runtime before full split)
 
 Purpose:
 - keep historical reference while reducing noise in `assets/js/runtime/`

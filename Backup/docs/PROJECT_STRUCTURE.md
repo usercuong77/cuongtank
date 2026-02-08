@@ -1,64 +1,47 @@
-# Project Structure (Simple)
+# Project Structure (Current)
 
-## Core Game
-- `index.html`: HTML layout shell
-- `assets/css/main.css`: full game styles (moved out from `index.html`)
-- `assets/js/runtime/i18n.js`: language + text sync module
-- `assets/js/runtime/bgm.js`: background music module
-- `assets/js/runtime/welcome.js`: welcome gate module
-- `assets/js/runtime/app-namespace.js`: `window.App` bootstrap namespace for safer cross-module extension
-- `assets/js/runtime/runtime-order-guard.js`: runtime boot-order verification guard (reports to `App.meta.runtimeOrder`)
-- `assets/js/runtime/core-config-base.js`: base config/constants (world, enemies, bullets, items, global aliases)
-- `assets/js/runtime/systems-pvp.js`: PvP constants, ammo/item stats, and PvP resolver logic
-- `assets/js/runtime/systems-skills.js`: tank systems + skill framework
-- `assets/js/runtime/core-engine.js`: camera + entities/classes + managers/shop runtime
-- `assets/js/runtime/save-flow.js`: save/load/autosave/continue flow module
-- `assets/js/runtime/core-state.js`: runtime game state object + unlock/load init helpers
-- `assets/js/runtime/core-game-loop.js`: main `loop()` and per-frame gameplay update flow
-- `assets/js/runtime/ui-menu.js`: start menu mode selector + PvP preload config
-- `assets/js/runtime/ui-shop.js`: in-game PvP loadout shop modal logic
-- `assets/js/runtime/ui-hud.js`: HUD polish module (HP chip bars + HUD style pass + shop card visual polish hook)
-- `assets/js/runtime/ui-preview.js`: start screen preview + skill panel rendering
-- `assets/js/runtime/ui-vfx.js`: combat VFX module (GFX config, VFX hooks, boss telegraphs)
-- `assets/js/runtime/ui-weapons.js`: weapon bar icons + rarity UI polish
-- `assets/js/runtime/qa-hooks.js`: QA/test hooks exposed under `window.__qa` when `?qa=1`
-- `assets/js/runtime/ui-lifecycle.js`: start/game lifecycle hooks (start button, end screens, resize boot)
-- `assets/js/runtime/core-ui-vfx.js`: lightweight UI boot init (`MAX.UI.init()`, `Shop.init()`)
-- `assets/js/game.js`: legacy monolith snapshot (not loaded by `index.html`)
+## Top-Level Layout
+- `Game/`: files required to run the game
+- `Test/`: automated test stack, QA scripts, and push helpers
+- `Backup/`: archive snapshots and backup docs
+- `.github/workflows/`: CI workflows (e2e + visual)
 
-## Tests
-- `tests/`: automated test cases (gameplay + visual)
-- `tests/runtime.spec.js`: runtime boot-order and legacy-runtime load regression tests
-- `run-tests.bat`: run full local test check
-- `run-visual-check.bat`: run visual-only check
-- `run-visual-update.bat`: update visual snapshots (only when you accept UI changes)
-- `run-preflight.bat`: full local gate (syntax + static links/runtime order + e2e + git sanity)
-- `run-release-check.bat`: strict release gate (all checks + require `main` branch + clean git tree)
+## Game Runtime
+- `Game/index.html`: shell layout, runtime script load order
+- `Game/assets/css/main.css`: full game stylesheet
+- `Game/assets/js/runtime/`: runtime modules (single source of truth)
+- `Game/Music/`: game music assets
+
+## Runtime Modules (Game/assets/js/runtime)
+- `app-namespace.js`: boot namespace + shared resolvers + expected runtime script contract
+- `runtime-order-guard.js`: validates runtime load order and reports to `App.meta.runtimeOrder`
+- `core-*`: config/state/engine/game-loop bootstrap and core gameplay flows
+- `systems-*`: skill and PvP systems
+- `ui-*`: menu, preview, HUD, VFX, shop, lifecycle flows
+- `qa-hooks.js`: QA hooks exposed as `window.__qa` when running with `?qa=1`
+
+## Legacy Archive
+- `Backup/archive/runtime-legacy/game.monolith.js`: archived legacy monolith (not used by game)
+- `Backup/archive/runtime-legacy/core*.js`: archived legacy runtime snapshots
+
+## Test Entrypoints
+- `Test/run-test.bat`: single test runner
+  - default: `preflight` (syntax + static/runtime checks + e2e + git sanity)
+  - other modes: `release`, `e2e`, `headed`, `ui`, `visual`, `visual-update`
+- `Test/run-visual-check.bat`: shortcut for visual regression check
+- `Test/run-visual-update.bat`: shortcut for visual snapshot update
+
+## Test Scripts
+- `Test/scripts/check-syntax.js`: syntax check for runtime/tests/scripts JS
+- `Test/scripts/check-static-links.js`: static refs + runtime-order contract + anti-monolith guard
+- `Test/scripts/pre-release-check.js`: orchestrates preflight/release gates
+- `Test/tests/runtime.spec.js`: runtime contract + legacy-not-loaded regression tests
+- `Test/tests/smoke.spec.js`, `Test/tests/gameplay.spec.js`, `Test/tests/visual.spec.js`: gameplay and UI test suites
 
 ## Push Helpers
-- `push-dev.bat`: commit + push to `codex/ci-setup` (safe dev branch, no Netlify deploy)
-- `release-main.bat`: commit + push to `main` (production release branch)
+- `Test/push-dev.bat`: commit + push current branch to `origin/codex/ci-setup`
+- `Test/release-main.bat`: release push to `origin/main`
 
-## Scripts
-- `scripts/`: internal helper scripts used by the root `.bat` launchers
-- `scripts/check-syntax.js`: lightweight JS syntax check for runtime/tests/scripts
-- `scripts/check-static-links.js`: verify `index.html` / CSS local refs + runtime script contract
-- `scripts/pre-release-check.js`: pre-release orchestrator for all checks
-- `scripts/run-preflight.bat`: batch wrapper for full preflight check
-- `scripts/run-release-check.bat`: batch wrapper for strict release check
-
-## CI/CD
-- `.github/workflows/e2e.yml`: GitHub auto test for gameplay/smoke
-- `.github/workflows/visual.yml`: GitHub visual regression workflow
-
-## Assets
-- `Music/`: background music and in-game music
-
-## Backups / Archive
-- `archive/Old/`: old backup HTML versions
-- `archive/Stable/`: stable snapshots
-- `archive/runtime-legacy/`: legacy runtime snapshots not loaded by `index.html`
-
-## Generated Folders
-- `node_modules/`: npm dependencies (auto-generated)
-- `test-results/`: test output (auto-generated)
+## Generated Output
+- `Test/node_modules/`: npm dependencies
+- `Test/test-results/`: local Playwright results

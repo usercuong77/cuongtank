@@ -9,6 +9,7 @@ const gameRoot = path.join(workspaceRoot, 'Game');
 const indexPath = path.join(gameRoot, 'index.html');
 const cssPath = path.join(gameRoot, 'assets', 'css', 'main.css');
 const appNsPath = path.join(gameRoot, 'assets', 'js', 'runtime', 'app-namespace.js');
+const legacyMonolithPath = path.join(gameRoot, 'assets', 'js', 'game.js');
 
 function rel(p) {
   return path.relative(workspaceRoot, p).replace(/\\/g, '/');
@@ -86,6 +87,17 @@ function extractRuntimeScriptsFromIndex(indexHtml) {
   return list;
 }
 
+function extractScriptSrcs(indexHtml) {
+  const out = [];
+  const rx = /<script[^>]*\bsrc=["']([^"']+)["'][^>]*>/gi;
+  let m;
+  while ((m = rx.exec(indexHtml)) !== null) {
+    const src = normalizeLocalRef(m[1]);
+    if (src) out.push(src);
+  }
+  return out;
+}
+
 function existsLocal(refPath) {
   const abs = path.join(gameRoot, refPath);
   return fs.existsSync(abs);
@@ -98,6 +110,7 @@ if (!fs.existsSync(indexPath)) {
 
 const indexHtml = fs.readFileSync(indexPath, 'utf8');
 const htmlRefs = extractHtmlRefs(indexHtml);
+const scriptSrcs = extractScriptSrcs(indexHtml);
 const missing = [];
 for (const ref of htmlRefs) {
   if (!existsLocal(ref)) missing.push(ref);
@@ -116,6 +129,11 @@ if (fs.existsSync(cssPath)) {
 }
 
 const runtimeLoaded = extractRuntimeScriptsFromIndex(indexHtml);
+const nonRuntimeLocalScripts = scriptSrcs.filter((src) => (
+  src.startsWith('assets/js/') &&
+  !src.startsWith('assets/js/runtime/')
+));
+const hasLegacyMonolithTag = scriptSrcs.includes('assets/js/game.js');
 const runtimeDup = [];
 const seen = new Set();
 for (const x of runtimeLoaded) {
@@ -147,6 +165,9 @@ if (fs.existsSync(appNsPath)) {
 
 const hasFail =
   missing.length > 0 ||
+  fs.existsSync(legacyMonolithPath) ||
+  hasLegacyMonolithTag ||
+  nonRuntimeLocalScripts.length > 0 ||
   runtimeDup.length > 0 ||
   runtimeMissing.length > 0 ||
   runtimeExtras.length > 0 ||
@@ -160,6 +181,21 @@ if (missing.length > 0) {
 if (runtimeDup.length > 0) {
   console.error('\n[check:assets] Duplicate runtime scripts in index.html:');
   for (const x of runtimeDup) console.error(`  - ${x}`);
+}
+
+if (fs.existsSync(legacyMonolithPath)) {
+  console.error('\n[check:assets] Legacy monolith still exists in Game path:');
+  console.error(`  - ${rel(legacyMonolithPath)}`);
+}
+
+if (hasLegacyMonolithTag) {
+  console.error('\n[check:assets] index.html must not load legacy monolith script:');
+  console.error('  - assets/js/game.js');
+}
+
+if (nonRuntimeLocalScripts.length > 0) {
+  console.error('\n[check:assets] Found local JS scripts outside runtime folder:');
+  for (const s of nonRuntimeLocalScripts) console.error(`  - ${s}`);
 }
 
 if (runtimeMissing.length > 0 || runtimeExtras.length > 0 || runtimeMismatchAt >= 0) {
