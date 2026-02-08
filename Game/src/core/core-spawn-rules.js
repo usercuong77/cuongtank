@@ -77,14 +77,47 @@
         return { valid: valid, x: x, y: y, attempts: attempts };
     }
 
+    function resolveWaveEnemySpawn(options) {
+        const opts = (options && typeof options === 'object') ? options : {};
+        const rand = (typeof opts.randomFn === 'function') ? opts.randomFn : Math.random;
+        const wave = Number(opts.wave || 1);
+        const isBossWave = !!opts.isBossWave;
+
+        const typeKey = pickWaveEnemyType(wave, isBossWave, rand);
+        const spawnPoint = findEdgeSpawnPoint({
+            cameraX: opts.cameraX,
+            cameraY: opts.cameraY,
+            viewportWidth: opts.viewportWidth,
+            viewportHeight: opts.viewportHeight,
+            worldWidth: opts.worldWidth,
+            worldHeight: opts.worldHeight,
+            obstacles: opts.obstacles,
+            checkCircleRectFn: opts.checkCircleRectFn,
+            maxAttempts: opts.maxAttempts,
+            edgeBuffer: opts.edgeBuffer,
+            worldPadding: opts.worldPadding,
+            obstacleRadius: opts.obstacleRadius,
+            randomFn: rand
+        });
+        return {
+            typeKey: typeKey,
+            valid: !!(spawnPoint && spawnPoint.valid),
+            x: Number(spawnPoint && spawnPoint.x || 0),
+            y: Number(spawnPoint && spawnPoint.y || 0),
+            attempts: Number(spawnPoint && spawnPoint.attempts || 0)
+        };
+    }
+
     try {
         const app = window.App || (window.App = {});
         app.runtime = app.runtime || {};
         app.runtime.pickWaveEnemyType = pickWaveEnemyType;
         app.runtime.findEdgeSpawnPoint = findEdgeSpawnPoint;
+        app.runtime.resolveWaveEnemySpawn = resolveWaveEnemySpawn;
 
         // Backward-compatible aliases for transitional runtime usage.
         window.pickWaveEnemyType = pickWaveEnemyType;
         window.findEdgeSpawnPoint = findEdgeSpawnPoint;
+        window.resolveWaveEnemySpawn = resolveWaveEnemySpawn;
     } catch (e) {}
 })();

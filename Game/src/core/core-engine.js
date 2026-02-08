@@ -3732,41 +3732,21 @@ if (__assCasting) { } else if (__isPvp) {
                 }
             },
             spawnEnemy() {
-                const __pickType = (() => {
+                const __resolveSpawn = (() => {
                     try {
-                        if (window.App && window.App.runtime && typeof window.App.runtime.pickWaveEnemyType === 'function') {
-                            return window.App.runtime.pickWaveEnemyType;
+                        if (window.App && window.App.runtime && typeof window.App.runtime.resolveWaveEnemySpawn === 'function') {
+                            return window.App.runtime.resolveWaveEnemySpawn;
                         }
                     } catch (e) {}
-                    try { if (typeof window.pickWaveEnemyType === 'function') return window.pickWaveEnemyType; } catch (e) {}
+                    try { if (typeof window.resolveWaveEnemySpawn === 'function') return window.resolveWaveEnemySpawn; } catch (e) {}
                     return null;
                 })();
-                const typeKey = (typeof __pickType === 'function')
-                    ? __pickType(this.wave, this.isBossWave, Math.random)
-                    : (() => {
-                        if (this.isBossWave) return 'BOSS';
-                        const pool = ['RED'];
-                        if (this.wave >= 2) pool.push('YELLOW');
-                        if (this.wave >= 3) pool.push('YELLOW', 'BLACK');
-                        if (this.wave >= 4) pool.push('BLACK', 'BLACK', 'PURPLE');
-                        if (this.wave >= 5) pool.push('PURPLE', 'PURPLE');
-                        return pool[Math.floor(Math.random() * pool.length)];
-                    })();
 
-                const __findSpawn = (() => {
-                    try {
-                        if (window.App && window.App.runtime && typeof window.App.runtime.findEdgeSpawnPoint === 'function') {
-                            return window.App.runtime.findEdgeSpawnPoint;
-                        }
-                    } catch (e) {}
-                    try { if (typeof window.findEdgeSpawnPoint === 'function') return window.findEdgeSpawnPoint; } catch (e) {}
-                    return null;
-                })();
-                let x = 0;
-                let y = 0;
-                let valid = false;
-                if (typeof __findSpawn === 'function') {
-                    const p = __findSpawn({
+                let resolved = null;
+                if (typeof __resolveSpawn === 'function') {
+                    resolved = __resolveSpawn({
+                        wave: this.wave,
+                        isBossWave: this.isBossWave,
                         cameraX: Camera.x,
                         cameraY: Camera.y,
                         viewportWidth: canvas.width,
@@ -3781,10 +3761,21 @@ if (__assCasting) { } else if (__isPvp) {
                         obstacleRadius: 80,
                         randomFn: Math.random
                     });
-                    x = Number(p && p.x || 0);
-                    y = Number(p && p.y || 0);
-                    valid = !!(p && p.valid);
-                } else {
+                }
+
+                if (!resolved || !resolved.valid) {
+                    // Safety fallback to keep runtime stable if spawn-rules module is unavailable.
+                    let typeKey;
+                    if (this.isBossWave) typeKey = 'BOSS';
+                    else {
+                        const pool = ['RED'];
+                        if (this.wave >= 2) pool.push('YELLOW');
+                        if (this.wave >= 3) pool.push('YELLOW', 'BLACK');
+                        if (this.wave >= 4) pool.push('BLACK', 'BLACK', 'PURPLE');
+                        if (this.wave >= 5) pool.push('PURPLE', 'PURPLE');
+                        typeKey = pool[Math.floor(Math.random() * pool.length)];
+                    }
+                    let x = 0, y = 0, valid = false;
                     let attempts = 0;
                     while (!valid && attempts < 50) {
                         const edge = Math.floor(Math.random() * 4);
@@ -3804,8 +3795,17 @@ if (__assCasting) { } else if (__isPvp) {
                         if (!hitObs) valid = true;
                         attempts++;
                     }
+                    resolved = { typeKey: typeKey, x: x, y: y, valid: valid };
                 }
-                if (valid) { const sc = this.scaling || this.computeScaling(); const hpMult = this.isBossWave ? sc.bossHpMult : sc.hpMult; const dmgMult = this.isBossWave ? sc.bossDmgMult : sc.dmgMult; const speedMult = sc.speedMult; const fireRateMult = sc.fireRateMult; Game.enemies.push(new Enemy(x, y, typeKey, hpMult, dmgMult, speedMult, fireRateMult)); }
+
+                if (resolved && resolved.valid) {
+                    const sc = this.scaling || this.computeScaling();
+                    const hpMult = this.isBossWave ? sc.bossHpMult : sc.hpMult;
+                    const dmgMult = this.isBossWave ? sc.bossDmgMult : sc.dmgMult;
+                    const speedMult = sc.speedMult;
+                    const fireRateMult = sc.fireRateMult;
+                    Game.enemies.push(new Enemy(resolved.x, resolved.y, resolved.typeKey, hpMult, dmgMult, speedMult, fireRateMult));
+                }
             }
         };
 
