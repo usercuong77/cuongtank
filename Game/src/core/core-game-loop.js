@@ -533,6 +533,7 @@ if (b.config.special === 'CHAIN') chainLightning(e, (dmg * b.config.chainDmgFact
 
                 Game.enemies = Game.enemies.filter(e => {
                     if (e.hp <= 0) {
+                        // Balance V1 (non-PvP): Assassin heals 2% max HP per kill.
                         const __killer = (Game.mode !== 'PVP_DUEL_AIM' && e.__lastHitPlayer && e.__lastHitPlayer.systemId === 'assassin')
                             ? e.__lastHitPlayer
                             : null;
