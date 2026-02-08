@@ -248,6 +248,92 @@ test('wave-transition safe wrapper returns false for invalid args', () => {
   assert.equal(runSafe({}), false);
 });
 
+test('skill resolver applies balance V1 only when mode !== PVP_DUEL_AIM', () => {
+  const sb = createRuntimeContext({
+    Game: { mode: '2P_BOT' },
+    SKILL_CONFIG: {
+      CLONE: { cooldown: 9000, duration: 12000 },
+      STEALTH: { cooldown: 20000, duration: 3000 },
+      VAMPIRISM: { cooldown: 25000, duration: 8000 }
+    }
+  });
+  sb.window.Game = sb.Game;
+  sb.window.SKILL_CONFIG = sb.SKILL_CONFIG;
+
+  loadScriptIntoContext('Game/src/data/skill-systems-data.js', sb);
+  loadScriptIntoContext('Game/src/systems/systems-skills.js', sb);
+
+  const getDef = sb.window.App.runtime.getSystemSkillDef;
+  assert.equal(typeof getDef, 'function');
+
+  const mageQ = getDef('mage', 'clone');
+  const mageR = getDef('mage', 'vampirism');
+  const juggerE = getDef('juggernaut', 'stealth');
+  const juggerR = getDef('juggernaut', 'vampirism');
+  const assQ = getDef('assassin', 'clone');
+  const assR = getDef('assassin', 'vampirism');
+  const speedQ = getDef('speed', 'clone');
+  const speedR = getDef('speed', 'vampirism');
+  const engQ = getDef('engineer', 'clone');
+  const engE = getDef('engineer', 'stealth');
+
+  assert.equal(mageQ.fireballDmgMult, 2.9);
+  assert.equal(mageQ.explosionRadius, 280);
+  assert.equal(mageR.tickDamage, 24);
+  assert.equal(juggerE.cooldown, 6800);
+  assert.equal(juggerR.cooldown, 21000);
+  assert.equal(juggerR.duration, 7000);
+  assert.equal(assQ.cooldown, 5000);
+  assert.equal(assR.cooldown, 17500);
+  assert.equal(speedQ.cooldown, 2600);
+  assert.equal(speedR.cooldown, 12500);
+  assert.equal(speedR.damageMult, 1.35);
+  assert.equal(engQ.bulletDmgMult, 0.60);
+  assert.equal(engE.healPct, 0.26);
+});
+
+test('skill resolver keeps PvP values unchanged in PVP_DUEL_AIM mode', () => {
+  const sb = createRuntimeContext({
+    Game: { mode: 'PVP_DUEL_AIM' },
+    SKILL_CONFIG: {
+      CLONE: { cooldown: 9000, duration: 12000 },
+      STEALTH: { cooldown: 20000, duration: 3000 },
+      VAMPIRISM: { cooldown: 25000, duration: 8000 }
+    }
+  });
+  sb.window.Game = sb.Game;
+  sb.window.SKILL_CONFIG = sb.SKILL_CONFIG;
+
+  loadScriptIntoContext('Game/src/data/skill-systems-data.js', sb);
+  loadScriptIntoContext('Game/src/systems/systems-skills.js', sb);
+
+  const getDef = sb.window.App.runtime.getSystemSkillDef;
+  const mageQ = getDef('mage', 'clone');
+  const mageR = getDef('mage', 'vampirism');
+  const juggerE = getDef('juggernaut', 'stealth');
+  const juggerR = getDef('juggernaut', 'vampirism');
+  const assQ = getDef('assassin', 'clone');
+  const assR = getDef('assassin', 'vampirism');
+  const speedQ = getDef('speed', 'clone');
+  const speedR = getDef('speed', 'vampirism');
+  const engQ = getDef('engineer', 'clone');
+  const engE = getDef('engineer', 'stealth');
+
+  assert.equal(mageQ.fireballDmgMult, 3.2);
+  assert.equal(mageQ.explosionRadius, 320);
+  assert.equal(mageR.tickDamage, 28);
+  assert.equal(juggerE.cooldown, 8000);
+  assert.equal(juggerR.cooldown, 25000);
+  assert.equal(juggerR.duration, 6000);
+  assert.equal(assQ.cooldown, 6100);
+  assert.equal(assR.cooldown, 21000);
+  assert.equal(speedQ.cooldown, 3000);
+  assert.equal(speedR.cooldown, 14000);
+  assert.equal(speedR.damageMult, 1.3);
+  assert.equal(engQ.bulletDmgMult, 0.65);
+  assert.equal(engE.healPct, 0.3);
+});
+
 test('pvp tuning exports frozen fallback config', () => {
   const sb = loadScript('Game/src/data/pvp-tuning-data.js');
   const tuning = sb.window.App.data.pvpTuning;

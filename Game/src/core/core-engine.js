@@ -2684,6 +2684,7 @@ if (__assCasting) { } else if (__isPvp) {
                                     : 0;
                                 const hitDamage = dmg + bossBonus;
                                 e.hp -= hitDamage;
+                                e.__lastHitPlayer = this;
                                 const dealt = Math.max(0, Math.min(hpBefore, hpBefore - e.hp));
                                 __accAssassinLeech(dealt, e);
                                 if (hpBefore > 0 && e.hp <= 0) __assassinKills++;

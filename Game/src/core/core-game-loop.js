@@ -469,12 +469,13 @@
                         if (checkCollision(b, e)) {
                             const dmgMult = (b.owner === 'PLAYER') ? (1 + 0.1 * ((Game.upgrades && Game.upgrades.dmgLv) ? Game.upgrades.dmgLv : 0)) : 1;
                             const dmg = b.config.damage * dmgMult;
-                            if (!b.config.noDirectHit) e.hp -= dmg;
                             let __owner = null;
                             if (b.owner === 'PLAYER') {
                                 const __plist = getPlayersListSafe();
                                 __owner = resolveProjectileOwnerPlayer(b, __plist);
                             }
+                            if (!b.config.noDirectHit) e.hp -= dmg;
+                            if (__owner) e.__lastHitPlayer = __owner;
 
 if (b.owner === 'PLAYER' && __owner && typeof __owner.gainUltiCharge === 'function') __owner.gainUltiCharge(0.5);
                             if (b.owner === 'PLAYER' && __owner && __owner.systemId === 'default' && __owner.skills && __owner.skills.vampirism && __owner.skills.vampirism.active) {
@@ -517,6 +518,7 @@ if (b.config.special === 'CHAIN') chainLightning(e, (dmg * b.config.chainDmgFact
                                         const sd = Math.round(base * f);
                                         if (sd > 0) {
                                             e2.hp -= sd;
+                                            if (__owner) e2.__lastHitPlayer = __owner;
                                             createDamageText(e2.x, e2.y, sd, b.config.color);
                                         }
                                     }
@@ -531,6 +533,13 @@ if (b.config.special === 'CHAIN') chainLightning(e, (dmg * b.config.chainDmgFact
 
                 Game.enemies = Game.enemies.filter(e => {
                     if (e.hp <= 0) {
+                        const __killer = (Game.mode !== 'PVP_DUEL_AIM' && e.__lastHitPlayer && e.__lastHitPlayer.systemId === 'assassin')
+                            ? e.__lastHitPlayer
+                            : null;
+                        if (__killer && typeof __killer.heal === 'function') {
+                            const __healOnKill = Math.max(1, Math.round((__killer.maxHp || 0) * 0.02));
+                            if (__healOnKill > 0) __killer.heal(__healOnKill);
+                        }
                         createComplexExplosion(e.x, e.y, e.config.color); Game.score += e.config.score; Game.ui.updateScore(Game.score); if (e.typeKey === 'BOSS') dropBossWeapon(e.x, e.y); else dropPickup(e.x, e.y); dropGold(e.x, e.y, (e.config && !isNaN(e.config.gold)) ? e.config.gold : 0); 
                         if(Game.player && typeof Game.player.gainUltiCharge === 'function') Game.player.gainUltiCharge(2);
                         return false;

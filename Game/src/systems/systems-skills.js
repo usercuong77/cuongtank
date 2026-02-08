@@ -49,6 +49,47 @@
         return bySys[skillKey] || null;
     }
 
+    function isPvpDuelAimMode() {
+        return !!(typeof Game !== 'undefined' && Game && Game.mode === 'PVP_DUEL_AIM');
+    }
+
+    function applyNonPvpBalanceV1(systemId, skillKey, baseDef) {
+        if (!baseDef || isPvpDuelAimMode()) return baseDef;
+
+        // Balance package V1: applies only when mode !== 'PVP_DUEL_AIM'.
+        if (systemId === 'mage' && skillKey === 'clone') {
+            return Object.assign({}, baseDef, { fireballDmgMult: 2.9, explosionRadius: 280 });
+        }
+        if (systemId === 'mage' && skillKey === 'vampirism') {
+            return Object.assign({}, baseDef, { tickDamage: 24 });
+        }
+        if (systemId === 'juggernaut' && skillKey === 'stealth') {
+            return Object.assign({}, baseDef, { cooldown: 6800 });
+        }
+        if (systemId === 'juggernaut' && skillKey === 'vampirism') {
+            return Object.assign({}, baseDef, { cooldown: 21000, duration: 7000 });
+        }
+        if (systemId === 'assassin' && skillKey === 'clone') {
+            return Object.assign({}, baseDef, { cooldown: 5000 });
+        }
+        if (systemId === 'assassin' && skillKey === 'vampirism') {
+            return Object.assign({}, baseDef, { cooldown: 17500 });
+        }
+        if (systemId === 'speed' && skillKey === 'clone') {
+            return Object.assign({}, baseDef, { cooldown: 2600 });
+        }
+        if (systemId === 'speed' && skillKey === 'vampirism') {
+            return Object.assign({}, baseDef, { cooldown: 12500, damageMult: 1.35 });
+        }
+        if (systemId === 'engineer' && skillKey === 'clone') {
+            return Object.assign({}, baseDef, { bulletDmgMult: 0.60 });
+        }
+        if (systemId === 'engineer' && skillKey === 'stealth') {
+            return Object.assign({}, baseDef, { healPct: 0.26 });
+        }
+        return baseDef;
+    }
+
     function getSystemSkillDef(systemId, skillKey) {
         const sys = getTankSystem(systemId);
         const fallbackDefault = getTankSystem('default');
@@ -57,8 +98,10 @@
             : (fallbackDefault && fallbackDefault.skills ? fallbackDefault.skills[skillKey] : null);
         if (!base) return base;
 
-        let out = base;
-        if (systemId === 'assassin' && typeof Game !== 'undefined' && Game && Game.mode === 'PVP_DUEL_AIM') {
+        const __isPvpMode = isPvpDuelAimMode();
+        let out = applyNonPvpBalanceV1(systemId, skillKey, base);
+
+        if (systemId === 'assassin' && __isPvpMode) {
             const cd = getAssassinPvpSkillCooldowns()[skillKey];
             if (typeof cd === 'number') out = Object.assign({}, out, { cooldown: cd });
         }
