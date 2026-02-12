@@ -2753,6 +2753,12 @@ if (__assCasting) { } else if (__isPvp) {
                 const isPvpMode = (Game.mode === 'PVP_DUEL_AIM');
                 let rawAmount = amount;
                 const juggerActive = (this.systemId === 'juggernaut' && this.buffs.juggerShield && this.buffs.juggerShield.active && now <= this.buffs.juggerShield.endTime);
+                const speedDashActive = (
+                    this.systemId === 'speed' &&
+                    this.dash &&
+                    this.dash.active &&
+                    now <= (this.dash.endTime || 0)
+                );
                 const defaultVampActive = (
                     this.systemId === 'default' &&
                     this.skills &&
@@ -2763,6 +2769,11 @@ if (__assCasting) { } else if (__isPvp) {
 
                 // Admin cheat: invulnerability.
                 if (this.invulnerable) {
+                    return;
+                }
+
+                // Speed system Q (Dash): full invulnerability while dashing.
+                if (speedDashActive) {
                     return;
                 }
 
@@ -2895,6 +2906,43 @@ if (__assCasting) { } else if (__isPvp) {
                 try { Game.__uiPid = (this.pid || 1); Game.ui.updateHealth(this.hp, this.maxHp); }
                 finally { Game.__uiPid = __pidPrev; }
                 Game.shake = 10;
+            }
+
+            isDefaultVampirismActive(nowTs) {
+                const now = (typeof nowTs === 'number') ? nowTs : Date.now();
+                return !!(
+                    this.systemId === 'default' &&
+                    this.skills &&
+                    this.skills.vampirism &&
+                    this.skills.vampirism.active &&
+                    now <= (this.skills.vampirism.endTime || 0)
+                );
+            }
+
+            applyDefaultVampLifesteal(damageDealt) {
+                if (!this.isDefaultVampirismActive()) return 0;
+                const dealt = Math.max(0, Number(damageDealt) || 0);
+                if (dealt <= 0) return 0;
+
+                const now = Date.now();
+                if (!this.vampHeal) this.vampHeal = { windowStart: now, healed: 0 };
+                if (now - this.vampHeal.windowStart >= 1000) {
+                    this.vampHeal.windowStart = now;
+                    this.vampHeal.healed = 0;
+                }
+
+                const leechPercent = Number(SKILL_CONFIG && SKILL_CONFIG.VAMPIRISM && SKILL_CONFIG.VAMPIRISM.leechPercent) || 0;
+                const capPerSecond = Number(SKILL_CONFIG && SKILL_CONFIG.VAMPIRISM && SKILL_CONFIG.VAMPIRISM.capPerSecond) || 0;
+                if (leechPercent <= 0) return 0;
+
+                const want = dealt * leechPercent;
+                const remain = (capPerSecond > 0) ? Math.max(0, capPerSecond - (this.vampHeal.healed || 0)) : want;
+                const healAmount = (capPerSecond > 0) ? Math.min(want, remain) : want;
+                if (healAmount <= 0) return 0;
+
+                this.vampHeal.healed = (this.vampHeal.healed || 0) + healAmount;
+                if (typeof this.heal === 'function') this.heal(healAmount);
+                return healAmount;
             }
 
             heal(amount) {
@@ -4394,4 +4442,3 @@ buyHeal() {
             window.Shop = Shop;
             window.Enemy = Enemy;
         } catch (e) {}
-

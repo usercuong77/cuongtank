@@ -49,7 +49,7 @@
                     R: { name:'Hút Máu', desc:'Trong thời gian hiệu lực, hồi máu theo % damage gây ra (có giới hạn hồi/giây), đúng chất Chiến Binh.' }
                 },
                 speed: {
-                    Q: { name:'Lướt', desc:'Lướt theo hướng WASD; nếu đứng yên thì lướt theo hướng nòng. Trong lúc lướt sẽ không bắn.' },
+                    Q: { name:'Lướt', desc:'Lướt theo hướng WASD; nếu đứng yên thì lướt theo hướng nòng. Trong lúc lướt sẽ không bắn, miễn sát thương và không rớt súng.' },
                     E: { name:'Miễn Thương', desc:'Miễn thương ngắn. Nếu nhận sát thương trong thời gian hiệu lực, hồi lại 50% HP lượng sát thương đó.' },
                     R: { name:'Cường Tốc', desc:'Tăng sát thương + tốc độ di chuyển và giảm hồi chiêu bắn (cooldown x0.5 cho một lần bắn).' }
                 },
@@ -82,7 +82,7 @@
                     R: { name:'Lifesteal', desc:'For a short duration, recover HP based on dealt damage (with per-second cap).' }
                 },
                 speed: {
-                    Q: { name:'Dash', desc:'Dash toward WASD direction; if no input, dash toward turret direction. Cannot shoot during dash.' },
+                    Q: { name:'Dash', desc:'Dash toward WASD direction; if no input, dash toward turret direction. During dash: cannot shoot, invulnerable, and no weapon drop.' },
                     E: { name:'Phase', desc:'Short invulnerability. Damage taken during Phase is converted into 50% healing.' },
                     R: { name:'Adrenaline', desc:'Overdrive: higher damage + speed and reduced fire cooldown (cooldown * 0.5 for one proc).' }
                 },
@@ -220,7 +220,28 @@
                 }catch(e){}
                 return {};
             }
-            function getExtraStats(sysId, slot){
+            function getDefaultRExtraStats(def){
+                let leechPct = 20;
+                let capPerSecond = 20;
+                try {
+                    const rules = (window && window.App && window.App.rules) ? window.App.rules : null;
+                    const cfg = (rules && rules.skillConfig) ? rules.skillConfig : (typeof SKILL_CONFIG !== 'undefined' ? SKILL_CONFIG : null);
+                    const vampCfg = cfg && cfg.VAMPIRISM ? cfg.VAMPIRISM : null;
+                    if (vampCfg) {
+                        if (typeof vampCfg.leechPercent === 'number') leechPct = Math.max(0, Math.round(vampCfg.leechPercent * 100));
+                        if (typeof vampCfg.capPerSecond === 'number') capPerSecond = Math.max(0, Math.round(vampCfg.capPerSecond));
+                    }
+                } catch(e) {}
+
+                let damageReduction = 70;
+                if (def && typeof def.damageTakenMult === 'number') {
+                    damageReduction = Math.max(0, Math.min(95, Math.round((1 - def.damageTakenMult) * 100)));
+                }
+                return localT('skill.defaultR', { leech: leechPct, cap: capPerSecond, dr: damageReduction });
+            }
+            function getExtraStats(sysId, slot, def){
+                if (sysId === 'default' && slot === 'R') return getDefaultRExtraStats(def || {});
+                if (sysId === 'speed' && slot === 'Q') return localT('skill.speedQ');
                 if (sysId !== 'assassin') return '';
                 if (slot === 'Q') return localT('skill.assassinQ', { range: localT('skill.range') + ' ' + __getAssassinSkillRange('Q') });
                 if (slot === 'E') return localT('skill.assassinE', { range: localT('skill.range') + ' ' + __getAssassinSkillRange('E') });
@@ -361,7 +382,7 @@
                     const desc = (skillText[slot] && skillText[slot].desc) ? skillText[slot].desc : '';
                     const cd = (def.cooldown != null) ? fmtMs(def.cooldown) : '-';
                     const dur = (def.duration != null) ? fmtMs(def.duration) : (def.time != null ? fmtMs(def.time) : '-');
-                    const extra = getExtraStats(sysId, slot);
+                    const extra = getExtraStats(sysId, slot, def);
                     const extraHtml = extra ? `<div class="skillStats">${extra}</div>` : '';
 
                     return `

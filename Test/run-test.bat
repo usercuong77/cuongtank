@@ -80,7 +80,7 @@ if not exist "node_modules\\@playwright\\test" (
 
 :run_script
 echo [INFO] Running: %NPM_CMD% run %SCRIPT_NAME%
-call "%NPM_CMD%" run %SCRIPT_NAME% %*
+call "%NPM_CMD%" run %SCRIPT_NAME%
 set "EC=%ERRORLEVEL%"
 echo.
 if "%EC%"=="0" (

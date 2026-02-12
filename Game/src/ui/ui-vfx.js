@@ -3838,7 +3838,7 @@ Coin.prototype.draw = function() {
 
                 // segments / grooves
                 ctx.globalAlpha = 0.55;
-                ctx.fillStyle = __bodyEdge;
+                ctx.fillStyle = 'rgba(10, 16, 20, 0.9)';
                 for (let i = 12; i <= 42; i += 10) {
                     ctx.fillRect(i - recoilOff, -7, 2, 14);
                 }

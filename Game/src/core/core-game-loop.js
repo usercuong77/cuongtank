@@ -474,20 +474,16 @@
                                 const __plist = getPlayersListSafe();
                                 __owner = resolveProjectileOwnerPlayer(b, __plist);
                             }
+                            const __hpBeforeDirect = (typeof e.hp === 'number') ? e.hp : 0;
                             if (!b.config.noDirectHit) e.hp -= dmg;
+                            const __dealtDirect = (!b.config.noDirectHit)
+                                ? Math.max(0, Math.min(__hpBeforeDirect, __hpBeforeDirect - e.hp))
+                                : 0;
                             if (__owner) e.__lastHitPlayer = __owner;
 
 if (b.owner === 'PLAYER' && __owner && typeof __owner.gainUltiCharge === 'function') __owner.gainUltiCharge(0.5);
-                            if (b.owner === 'PLAYER' && __owner && __owner.systemId === 'default' && __owner.skills && __owner.skills.vampirism && __owner.skills.vampirism.active) {
-                                // Lifesteal with cap per second
-                                const now2 = Date.now();
-                                if (!__owner.vampHeal) __owner.vampHeal = { windowStart: now2, healed: 0 };
-                                if (now2 - __owner.vampHeal.windowStart >= 1000) { __owner.vampHeal.windowStart = now2; __owner.vampHeal.healed = 0; }
-                                const cap = (SKILL_CONFIG.VAMPIRISM.capPerSecond || 0);
-                                const want = dmg * (SKILL_CONFIG.VAMPIRISM.leechPercent || 0);
-                                const remain = (cap > 0) ? Math.max(0, cap - __owner.vampHeal.healed) : want;
-                                const healAmount = (cap > 0) ? Math.min(want, remain) : want;
-                                if (healAmount > 0) { __owner.vampHeal.healed += healAmount; __owner.heal(healAmount); }
+                            if (b.owner === 'PLAYER' && __owner && typeof __owner.applyDefaultVampLifesteal === 'function') {
+                                __owner.applyDefaultVampLifesteal(__dealtDirect);
                             }
                             createDamageText(e.x, e.y, Math.round(dmg), b.config.color); createComplexExplosion(b.x, b.y, b.config.color);
                             if (b.config.effect) {
@@ -517,8 +513,13 @@ if (b.config.special === 'CHAIN') chainLightning(e, (dmg * b.config.chainDmgFact
                                         const base = includeHit ? dmg : (dmg * splash);
                                         const sd = Math.round(base * f);
                                         if (sd > 0) {
+                                            const __hpBeforeSplash = (typeof e2.hp === 'number') ? e2.hp : 0;
                                             e2.hp -= sd;
                                             if (__owner) e2.__lastHitPlayer = __owner;
+                                            if (__owner && typeof __owner.applyDefaultVampLifesteal === 'function') {
+                                                const __dealtSplash = Math.max(0, Math.min(__hpBeforeSplash, __hpBeforeSplash - e2.hp));
+                                                __owner.applyDefaultVampLifesteal(__dealtSplash);
+                                            }
                                             createDamageText(e2.x, e2.y, sd, b.config.color);
                                         }
                                     }

@@ -107,6 +107,8 @@ function __devLog() {
         duration: 'Thời lượng',
         cooldown: 'Hồi chiêu',
         range: 'Tầm',
+        defaultR: 'Hút {leech}% sát thương gây ra - tối đa {cap} HP/giây - giảm {dr}% sát thương nhận',
+        speedQ: 'Khi lướt: miễn sát thương - không rớt súng',
         assassinQ: '{range} - 3 lần chém - Có thể quay về',
         assassinE: '{range} - 3 mục tiêu - 2 chém/mục',
         assassinR: '{range} - 10 lần blink - Tối đa 3 hit/mục'
@@ -208,6 +210,8 @@ function __devLog() {
         duration: 'Duration',
         cooldown: 'Cooldown',
         range: 'Range',
+        defaultR: 'Leech {leech}% dealt damage - up to {cap} HP/s - reduce incoming damage by {dr}%',
+        speedQ: 'During dash: invulnerable - no weapon drop',
         assassinQ: '{range} - 3 slashes - Can return',
         assassinE: '{range} - 3 targets - 2 slashes/target',
         assassinR: '{range} - 10 blinks - Up to 3 hits/target'
