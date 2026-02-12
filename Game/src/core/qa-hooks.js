@@ -34,6 +34,102 @@ const __installQaHooks = function() {
                     try { if (window.__readStartModeCfg) return window.__readStartModeCfg(); } catch(e) {}
                     return null;
                 };
+                const __resolveQaPlayer = (pid) => {
+                    try {
+                        const __pid = parseInt(pid, 10);
+                        if (!Game) return null;
+                        if (__pid === 2) {
+                            if (Game.player2) return Game.player2;
+                            if (Array.isArray(Game.players) && Game.players[1]) return Game.players[1];
+                            return null;
+                        }
+                        if (__pid > 0 && Array.isArray(Game.players) && Game.players[__pid - 1]) return Game.players[__pid - 1];
+                        return Game.player || (Array.isArray(Game.players) ? Game.players[0] : null) || null;
+                    } catch(e) {
+                        return null;
+                    }
+                };
+                const __normalizeSkillKey = (skillKey) => {
+                    const raw = String(skillKey || '').trim().toLowerCase();
+                    if (raw === 'q' || raw === 'clone') return 'clone';
+                    if (raw === 'e' || raw === 'stealth') return 'stealth';
+                    if (raw === 'r' || raw === 'vampirism') return 'vampirism';
+                    return raw;
+                };
+                const __createQaDummyEnemy = (x, y) => {
+                    return {
+                        x: Number(x || 0),
+                        y: Number(y || 0),
+                        radius: 18,
+                        hp: 999999,
+                        maxHp: 999999,
+                        typeKey: 'QA_DUMMY',
+                        markedForDeletion: false,
+                        effects: {
+                            stun: { active: false, endTime: 0 },
+                            slow: { active: false, endTime: 0, factor: 1 }
+                        },
+                        applyEffect: function(effectConfig) {
+                            try {
+                                if (!effectConfig || !effectConfig.type) return;
+                                const now = Date.now();
+                                if (effectConfig.type === 'STUN') {
+                                    this.effects.stun.active = true;
+                                    this.effects.stun.endTime = now + Math.max(0, Number(effectConfig.duration || 800));
+                                } else if (effectConfig.type === 'SLOW') {
+                                    this.effects.slow.active = true;
+                                    this.effects.slow.endTime = now + Math.max(0, Number(effectConfig.duration || 700));
+                                    this.effects.slow.factor = Math.max(0.15, Math.min(1, Number(effectConfig.factor || 0.5)));
+                                }
+                            } catch(e) {}
+                        },
+                        takeDamage: function(amount) {
+                            try {
+                                const dmg = Math.max(0, Number(amount || 0));
+                                this.hp = Math.max(1, this.hp - dmg);
+                                return dmg;
+                            } catch(e) {
+                                return 0;
+                            }
+                        },
+                        update: function() {},
+                        draw: function() {}
+                    };
+                };
+                const __ensureAssassinTarget = (player, skillName) => {
+                    try {
+                        if (!player || player.systemId !== 'assassin') return;
+                        const __qRange = (typeof ASSASSIN_SKILL_RANGE_Q === 'number') ? ASSASSIN_SKILL_RANGE_Q : 520;
+                        const __eRange = (typeof ASSASSIN_SKILL_RANGE_E === 'number') ? ASSASSIN_SKILL_RANGE_E : 650;
+                        const __rRange = (typeof ASSASSIN_SKILL_RANGE_R === 'number') ? ASSASSIN_SKILL_RANGE_R : 900;
+                        const rangeMap = { clone: __qRange, stealth: __eRange, vampirism: __rRange };
+                        const wantedRange = Number(rangeMap[skillName] || __qRange);
+                        const desiredDist = Math.max(80, Math.min(220, Math.round(wantedRange * 0.35)));
+
+                        if (Game.mode === 'PVP_DUEL_AIM') {
+                            const plist = Array.isArray(Game.players) ? Game.players : [];
+                            for (let i = 0; i < plist.length; i++) {
+                                const p = plist[i];
+                                if (!p || p === player || (typeof p.hp === 'number' && p.hp <= 0)) continue;
+                                p.isStealth = false;
+                                p.x = player.x + desiredDist;
+                                p.y = player.y;
+                                return;
+                            }
+                            return;
+                        }
+
+                        if (!Array.isArray(Game.enemies)) Game.enemies = [];
+                        for (let i = 0; i < Game.enemies.length; i++) {
+                            const e = Game.enemies[i];
+                            if (!e || e.markedForDeletion || (typeof e.hp === 'number' && e.hp <= 0)) continue;
+                            const d = Math.hypot((e.x || 0) - player.x, (e.y || 0) - player.y);
+                            if (d <= wantedRange * 0.95) return;
+                        }
+                        const dummy = __createQaDummyEnemy(player.x + desiredDist, player.y);
+                        Game.enemies.push(dummy);
+                    } catch(e) {}
+                };
                 const params = new URLSearchParams((window && window.location && window.location.search) ? window.location.search : '');
                 if (params.get('qa') !== '1') return;
                 window.__qa = Object.assign({}, window.__qa || {}, {
@@ -252,6 +348,198 @@ const __installQaHooks = function() {
                             if (Game.pvp.state !== 'roundEnd') return false;
                             Game.pvp.roundEndAt = Date.now() - 1;
                             Game.pvpTick();
+                            return true;
+                        } catch(e) {
+                            return false;
+                        }
+                    },
+                    qaGetPlayerSkillState: (pid) => {
+                        try {
+                            const p = __resolveQaPlayer(pid);
+                            if (!p) return null;
+                            const toSkillState = (src) => ({
+                                lastUsed: Number((src && src.lastUsed) || 0),
+                                active: !!(src && src.active),
+                                endTime: Number((src && src.endTime) || 0)
+                            });
+                            return {
+                                pid: Number(p.pid || 1),
+                                systemId: String(p.systemId || 'default'),
+                                x: Number(p.x || 0),
+                                y: Number(p.y || 0),
+                                angle: Number(p.angle || 0),
+                                hp: Number(p.hp || 0),
+                                maxHp: Number(p.maxHp || 0),
+                                skills: {
+                                    clone: toSkillState(p.skills && p.skills.clone),
+                                    stealth: toSkillState(p.skills && p.skills.stealth),
+                                    vampirism: toSkillState(p.skills && p.skills.vampirism)
+                                },
+                                stealthActive: !!p.isStealth,
+                                dashActive: !!(p.dash && p.dash.active),
+                                ramActive: !!(p.ram && p.ram.active),
+                                juggerShieldActive: !!(p.buffs && p.buffs.juggerShield && p.buffs.juggerShield.active),
+                                siegeActive: !!(p.buffs && p.buffs.siege && p.buffs.siege.active),
+                                mageBlizzardActive: !!(p.mage && p.mage.blizzard && p.mage.blizzard.active),
+                                turretCount: (Array.isArray(Game && Game.turrets)) ? Game.turrets.length : 0
+                            };
+                        } catch(e) {
+                            return null;
+                        }
+                    },
+                    qaSetPlayerHp: (hp, opts) => {
+                        const options = (opts && typeof opts === 'object') ? opts : {};
+                        const pid = (typeof options.pid !== 'undefined') ? options.pid : 1;
+                        try {
+                            const p = __resolveQaPlayer(pid);
+                            if (!p) return false;
+                            const maxHp = Math.max(0, Number(p.maxHp || 0));
+                            const nextHp = Math.max(0, Math.min(maxHp, Number(hp || 0)));
+                            p.hp = nextHp;
+                            try {
+                                const prevPid = Game.__uiPid;
+                                Game.__uiPid = Number(p.pid || pid || 1);
+                                if (Game.ui && typeof Game.ui.updateHealth === 'function') {
+                                    Game.ui.updateHealth(p.hp, p.maxHp);
+                                }
+                                Game.__uiPid = prevPid;
+                            } catch(e) {}
+                            return true;
+                        } catch(e) {
+                            return false;
+                        }
+                    },
+                    qaApplyPlayerDamage: (amount, opts) => {
+                        const options = (opts && typeof opts === 'object') ? opts : {};
+                        const pid = (typeof options.pid !== 'undefined') ? options.pid : 1;
+                        try {
+                            const p = __resolveQaPlayer(pid);
+                            if (!p || typeof p.takeDamage !== 'function') return null;
+                            const beforeHp = Number(p.hp || 0);
+                            const raw = Math.max(0, Number(amount || 0));
+                            const src = (options.source && typeof options.source === 'object') ? Object.assign({}, options.source) : {};
+                            const sourceType = String(options.type || src.type || '').trim();
+                            if (sourceType) src.type = sourceType;
+                            if (!src.enemy && !src.attacker) {
+                                src.enemy = {
+                                    typeKey: 'QA_ATTACKER',
+                                    hp: 999999,
+                                    maxHp: 999999,
+                                    x: Number(p.x || 0) + 32,
+                                    y: Number(p.y || 0),
+                                    pid: (Number(p.pid || 1) === 1) ? 2 : 1
+                                };
+                            }
+                            p.takeDamage(raw, src);
+                            const afterHp = Number(p.hp || 0);
+                            return {
+                                beforeHp: beforeHp,
+                                afterHp: afterHp,
+                                delta: Math.max(0, beforeHp - afterHp),
+                                sourceType: src.type || null
+                            };
+                        } catch(e) {
+                            return null;
+                        }
+                    },
+                    qaApplyDefaultVampLifesteal: (damageDealt, opts) => {
+                        const options = (opts && typeof opts === 'object') ? opts : {};
+                        const pid = (typeof options.pid !== 'undefined') ? options.pid : 1;
+                        try {
+                            const p = __resolveQaPlayer(pid);
+                            if (!p || typeof p.applyDefaultVampLifesteal !== 'function') return null;
+                            const beforeHp = Number(p.hp || 0);
+                            const healed = Number(p.applyDefaultVampLifesteal(Math.max(0, Number(damageDealt || 0))) || 0);
+                            const afterHp = Number(p.hp || 0);
+                            return {
+                                beforeHp: beforeHp,
+                                afterHp: afterHp,
+                                healed: healed,
+                                hpDelta: Math.max(0, afterHp - beforeHp)
+                            };
+                        } catch(e) {
+                            return null;
+                        }
+                    },
+                    qaSetSkillLastUsed: (skillKey, value, opts) => {
+                        const options = (opts && typeof opts === 'object') ? opts : {};
+                        const pid = (typeof options.pid !== 'undefined') ? options.pid : 1;
+                        const key = __normalizeSkillKey(skillKey);
+                        try {
+                            const player = __resolveQaPlayer(pid);
+                            if (!player || !player.skills || !player.skills[key]) return false;
+                            const numeric = Number((typeof value !== 'undefined') ? value : 0);
+                            player.skills[key].lastUsed = Number.isFinite(numeric) ? numeric : 0;
+                            return true;
+                        } catch(e) {
+                            return false;
+                        }
+                    },
+                    qaGetPvpSkillLockUntil: (pid) => {
+                        try {
+                            const player = __resolveQaPlayer(pid);
+                            if (!player) return 0;
+                            return Number(player._pvpSkillLockUntil || 0);
+                        } catch(e) {
+                            return 0;
+                        }
+                    },
+                    qaUseSkill: (skillKey, opts) => {
+                        const options = (opts && typeof opts === 'object') ? opts : {};
+                        const pid = (typeof options.pid !== 'undefined') ? options.pid : 1;
+                        const key = __normalizeSkillKey(skillKey);
+                        try {
+                            const player = __resolveQaPlayer(pid);
+                            if (!player || typeof player.useSkill !== 'function') {
+                                return { ok: false, reason: 'player-not-found', key: key };
+                            }
+                            if (!player.skills || !player.skills[key]) {
+                                return { ok: false, reason: 'invalid-skill', key: key };
+                            }
+
+                            if (player.systemId === 'assassin') {
+                                __ensureAssassinTarget(player, key);
+                            }
+
+                            const before = Number((player.skills[key] && player.skills[key].lastUsed) || 0);
+                            const bypassCooldown = (options.noCooldown !== false);
+                            const prevNoSkillCd = !!(Game && Game.adminNoSkillCooldown);
+
+                            try {
+                                if (Game && bypassCooldown) Game.adminNoSkillCooldown = true;
+                                player.useSkill(key);
+                            } finally {
+                                if (Game && bypassCooldown) Game.adminNoSkillCooldown = prevNoSkillCd;
+                            }
+
+                            const after = Number((player.skills[key] && player.skills[key].lastUsed) || 0);
+                            return {
+                                ok: after > before,
+                                key: key,
+                                beforeLastUsed: before,
+                                afterLastUsed: after,
+                                state: (window.__qa && typeof window.__qa.qaGetPlayerSkillState === 'function')
+                                    ? window.__qa.qaGetPlayerSkillState(pid)
+                                    : null
+                            };
+                        } catch(e) {
+                            return {
+                                ok: false,
+                                key: key,
+                                reason: 'exception',
+                                message: String((e && e.message) ? e.message : e)
+                            };
+                        }
+                    },
+                    qaSetMouseWorld: (x, y) => {
+                        try {
+                            if (!Input || !Input.mouse) return false;
+                            const wx = Number(x || 0);
+                            const wy = Number(y || 0);
+                            const cx = (typeof Camera !== 'undefined' && Camera) ? Number(Camera.x || 0) : 0;
+                            const cy = (typeof Camera !== 'undefined' && Camera) ? Number(Camera.y || 0) : 0;
+                            Input.mouse.x = wx - cx;
+                            Input.mouse.y = wy - cy;
                             return true;
                         } catch(e) {
                             return false;

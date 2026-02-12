@@ -90,7 +90,7 @@ function main() {
   runStep('Static links + runtime order check', process.execPath, [path.join('scripts', 'check-static-links.js')], { cwd: testRoot });
 
   if (!isQuick) {
-    runNpmScript('E2E test suite', 'test:e2e');
+    runNpmScript('E2E test suite (stable)', 'test:e2e:stable');
   } else {
     console.log('\n==> E2E test suite');
     console.log('[skip] quick mode enabled');

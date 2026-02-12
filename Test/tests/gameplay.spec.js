@@ -44,6 +44,52 @@ async function startPvpMatchAndConfirm(page) {
   await expect(page.locator('#pvpLoadoutModal')).toBeHidden();
 }
 
+async function startMatchInMode(page, options = {}) {
+  const opts = options || {};
+  const players = (parseInt(opts.players, 10) === 2) ? 2 : 1;
+  const difficulty = (String(opts.difficulty || 'hard').toLowerCase() === 'easy') ? 'easy' : 'hard';
+  const p2Mode = (String(opts.p2Mode || 'coop').toLowerCase() === 'pvp') ? 'pvp' : 'coop';
+  const systemId = String(opts.systemId || 'default');
+  const p2SystemId = String(opts.p2SystemId || 'default');
+
+  await page.goto('/?qa=1');
+  await dismissWelcome(page);
+
+  if (systemId === 'assassin' || p2SystemId === 'assassin') {
+    const unlocked = await page.evaluate(() => {
+      if (!window.__qa || typeof window.__qa.setAssassinUnlock !== 'function') return false;
+      return window.__qa.setAssassinUnlock('qa-mode-start');
+    });
+    expect(unlocked).toBeTruthy();
+  }
+
+  await page.check(`input[name="tankSystem"][value="${systemId}"]`);
+  await page.check(`input[name="modePlayers"][value="${players}"]`);
+
+  if (players === 1) {
+    await page.check(`input[name="modeDifficulty"][value="${difficulty}"]`);
+  } else {
+    await expect(page.locator('#p2ModeSeg')).toBeVisible();
+    await page.check(`input[name="mode2p"][value="${p2Mode}"]`);
+    await page.selectOption('#p2SystemSelect', p2SystemId);
+  }
+
+  await startMatch(page);
+
+  if (players === 2 && p2Mode === 'pvp') {
+    await expect(page.locator('#pvpLoadoutModal')).toBeVisible();
+    await page.click('#pvpLiveConfirm');
+    await expect(page.locator('#pvpLoadoutModal')).toBeHidden();
+  }
+
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      if (!window.__qa || typeof window.__qa.getRuntimeState !== 'function') return null;
+      return window.__qa.getRuntimeState();
+    });
+  }).not.toBeNull();
+}
+
 test('pvp loadout confirm applies selected ammo/items', async ({ page }) => {
   await page.goto('/?qa=1');
   await dismissWelcome(page);
@@ -155,6 +201,242 @@ test('pvp match win condition reaches matchEnd and shows replay button', async (
   }).toBeTruthy();
 
   await expect(page.locator('#victoryScreen')).toBeHidden();
+});
+
+test('mode-specific regression: mage E uses mouse in 1P Hard, directional in 1P Easy and 2P Bot', async ({ page }) => {
+  const measureMageBlink = async (modeOptions) => {
+    await startMatchInMode(page, Object.assign({}, modeOptions, { systemId: 'mage' }));
+    const result = await page.evaluate(() => {
+      if (!window.__qa || typeof window.__qa.qaGetPlayerSkillState !== 'function') return null;
+      if (typeof window.__qa.qaUseSkill !== 'function') return null;
+
+      const before = window.__qa.qaGetPlayerSkillState(1);
+      if (!before) return null;
+
+      const modeState = (window.__qa.getRuntimeState && window.__qa.getRuntimeState()) ? window.__qa.getRuntimeState() : null;
+      const mode = modeState ? modeState.mode : null;
+      const mousePinned = (typeof window.__qa.qaSetMouseWorld === 'function')
+        ? window.__qa.qaSetMouseWorld(before.x, before.y)
+        : false;
+      const cast = window.__qa.qaUseSkill('e', { pid: 1, noCooldown: true });
+      const after = window.__qa.qaGetPlayerSkillState(1);
+
+      if (!after) return null;
+      return {
+        mode,
+        mousePinned,
+        castOk: !!(cast && cast.ok),
+        dist: Math.hypot((after.x - before.x), (after.y - before.y))
+      };
+    });
+
+    expect(result).toBeTruthy();
+    expect(result.castOk).toBeTruthy();
+    expect(result.mousePinned).toBeTruthy();
+    return {
+      mode: result.mode,
+      dist: result.dist
+    };
+  };
+
+  const hard = await measureMageBlink({ players: 1, difficulty: 'hard' });
+  const easy = await measureMageBlink({ players: 1, difficulty: 'easy' });
+  const coop = await measureMageBlink({ players: 2, p2Mode: 'coop', p2SystemId: 'default' });
+
+  expect(hard.mode).toBe('PVE');
+  expect(easy.mode).toBe('PVE');
+  expect(coop.mode).toBe('PVE');
+
+  expect(hard.dist).toBeLessThan(120);
+  expect(easy.dist).toBeGreaterThan(180);
+  expect(coop.dist).toBeGreaterThan(180);
+});
+
+test('mode-specific regression: PvP applies global skill lockout while PVE allows recast after cooldown reset', async ({ page }) => {
+  await startMatchInMode(page, { players: 1, difficulty: 'hard', systemId: 'speed' });
+  const pveFlow = await page.evaluate(() => {
+    if (!window.__qa || typeof window.__qa.qaUseSkill !== 'function') return null;
+    const first = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    const reset = window.__qa.qaSetSkillLastUsed('q', 0, { pid: 1 });
+    const second = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    return {
+      mode: (window.__qa.getRuntimeState && window.__qa.getRuntimeState()) ? window.__qa.getRuntimeState().mode : null,
+      first,
+      reset,
+      second,
+      lockUntil: (typeof window.__qa.qaGetPvpSkillLockUntil === 'function') ? window.__qa.qaGetPvpSkillLockUntil(1) : 0,
+      now: Date.now()
+    };
+  });
+
+  expect(pveFlow).toBeTruthy();
+  expect(pveFlow.mode).toBe('PVE');
+  expect(pveFlow.first && pveFlow.first.ok).toBeTruthy();
+  expect(pveFlow.reset).toBeTruthy();
+  expect(pveFlow.second && pveFlow.second.ok).toBeTruthy();
+  expect(Number(pveFlow.lockUntil || 0)).toBeLessThanOrEqual(pveFlow.now);
+
+  await startMatchInMode(page, { players: 2, p2Mode: 'pvp', systemId: 'speed', p2SystemId: 'default' });
+  const pvpFlow = await page.evaluate(() => {
+    if (!window.__qa || typeof window.__qa.qaUseSkill !== 'function') return null;
+    const first = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    const reset = window.__qa.qaSetSkillLastUsed('q', 0, { pid: 1 });
+    const second = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    return {
+      mode: (window.__qa.getRuntimeState && window.__qa.getRuntimeState()) ? window.__qa.getRuntimeState().mode : null,
+      first,
+      reset,
+      second,
+      lockUntil: (typeof window.__qa.qaGetPvpSkillLockUntil === 'function') ? window.__qa.qaGetPvpSkillLockUntil(1) : 0,
+      now: Date.now()
+    };
+  });
+
+  expect(pvpFlow).toBeTruthy();
+  expect(pvpFlow.mode).toBe('PVP_DUEL_AIM');
+  expect(pvpFlow.first && pvpFlow.first.ok).toBeTruthy();
+  expect(pvpFlow.reset).toBeTruthy();
+  expect(pvpFlow.second && pvpFlow.second.ok).toBeFalsy();
+  expect(Number(pvpFlow.lockUntil || 0)).toBeGreaterThan(pvpFlow.now);
+});
+
+test('balance regression: default R keeps ~70% mitigation and lifesteal cap stable', async ({ page }) => {
+  await startMatchInMode(page, { players: 1, difficulty: 'hard', systemId: 'default' });
+
+  const probe = await page.evaluate(() => {
+    if (!window.__qa) return null;
+    if (typeof window.__qa.qaGetPlayerSkillState !== 'function') return null;
+    if (typeof window.__qa.qaSetPlayerHp !== 'function') return null;
+    if (typeof window.__qa.qaApplyPlayerDamage !== 'function') return null;
+    if (typeof window.__qa.qaApplyDefaultVampLifesteal !== 'function') return null;
+    if (typeof window.__qa.qaUseSkill !== 'function') return null;
+
+    const p0 = window.__qa.qaGetPlayerSkillState(1);
+    if (!p0) return null;
+    const maxHp = Number(p0.maxHp || 0);
+
+    window.__qa.qaSetPlayerHp(maxHp, { pid: 1 });
+    const base = window.__qa.qaApplyPlayerDamage(40, { pid: 1, type: 'PVE_MELEE' });
+
+    window.__qa.qaSetPlayerHp(maxHp, { pid: 1 });
+    const cast = window.__qa.qaUseSkill('r', { pid: 1, noCooldown: true });
+    const reduced = window.__qa.qaApplyPlayerDamage(40, { pid: 1, type: 'PVE_MELEE' });
+
+    window.__qa.qaSetPlayerHp(Math.max(1, maxHp - 50), { pid: 1 });
+    const leech1 = window.__qa.qaApplyDefaultVampLifesteal(200, { pid: 1 });
+    const leech2 = window.__qa.qaApplyDefaultVampLifesteal(200, { pid: 1 });
+
+    const ratio = (base && base.delta > 0) ? (reduced.delta / base.delta) : null;
+    return { base, cast, reduced, ratio, leech1, leech2 };
+  });
+
+  expect(probe).toBeTruthy();
+  expect(probe.base).toBeTruthy();
+  expect(probe.cast && probe.cast.ok).toBeTruthy();
+  expect(probe.reduced).toBeTruthy();
+  expect(probe.leech1).toBeTruthy();
+  expect(probe.leech2).toBeTruthy();
+
+  expect(probe.base.delta).toBeGreaterThan(35);
+  expect(probe.base.delta).toBeLessThan(45);
+  expect(probe.reduced.delta).toBeGreaterThan(9);
+  expect(probe.reduced.delta).toBeLessThan(15);
+  expect(probe.ratio).not.toBeNull();
+  expect(probe.ratio).toBeGreaterThan(0.22);
+  expect(probe.ratio).toBeLessThan(0.38);
+
+  expect(probe.leech1.healed).toBeGreaterThan(19);
+  expect(probe.leech1.healed).toBeLessThan(21);
+  expect(probe.leech1.hpDelta).toBeGreaterThan(19);
+  expect(probe.leech1.hpDelta).toBeLessThan(21);
+  expect(probe.leech2.healed).toBeLessThan(0.5);
+  expect(probe.leech2.hpDelta).toBeLessThan(0.5);
+});
+
+test('balance regression: engineer E heal scales with healPct in PVE', async ({ page }) => {
+  await startMatchInMode(page, { players: 1, difficulty: 'hard', systemId: 'engineer' });
+
+  const probe = await page.evaluate(() => {
+    if (!window.__qa || typeof window.__qa.qaUseSkill !== 'function') return null;
+    if (typeof window.__qa.qaGetPlayerSkillState !== 'function') return null;
+    if (typeof window.__qa.qaSetPlayerHp !== 'function') return null;
+    if (typeof window.getSystemSkillDef !== 'function') return null;
+
+    const before = window.__qa.qaGetPlayerSkillState(1);
+    if (!before) return null;
+
+    const def = window.getSystemSkillDef('engineer', 'stealth') || null;
+    const healPct = Number(def && def.healPct);
+    const expected = Math.round(Number(before.maxHp || 0) * healPct);
+
+    window.__qa.qaSetPlayerHp(Math.max(1, Number(before.maxHp || 0) - 60), { pid: 1 });
+    const pre = window.__qa.qaGetPlayerSkillState(1);
+    const cast = window.__qa.qaUseSkill('e', { pid: 1, noCooldown: true });
+    const post = window.__qa.qaGetPlayerSkillState(1);
+    return {
+      cast,
+      healPct,
+      expected,
+      healed: Number(post && pre ? (post.hp - pre.hp) : 0),
+      preHp: Number(pre ? pre.hp : 0),
+      postHp: Number(post ? post.hp : 0),
+      maxHp: Number(post ? post.maxHp : 0)
+    };
+  });
+
+  expect(probe).toBeTruthy();
+  expect(probe.cast && probe.cast.ok).toBeTruthy();
+  expect(probe.healPct).toBeCloseTo(0.26, 6);
+  expect(probe.expected).toBe(31);
+  expect(probe.healed).toBeGreaterThanOrEqual(probe.expected - 1);
+  expect(probe.healed).toBeLessThanOrEqual(probe.expected + 1);
+  expect(probe.postHp).toBeLessThanOrEqual(probe.maxHp);
+});
+
+test('balance regression: cooldown gate thresholds stay stable (PVE speed Q, PvP assassin Q)', async ({ page }) => {
+  await startMatchInMode(page, { players: 1, difficulty: 'hard', systemId: 'speed' });
+  const pveProbe = await page.evaluate(() => {
+    if (!window.__qa || typeof window.__qa.qaUseSkill !== 'function') return null;
+    if (typeof window.__qa.qaSetSkillLastUsed !== 'function') return null;
+    if (typeof window.getSystemSkillDef !== 'function') return null;
+
+    const cd = Number((window.getSystemSkillDef('speed', 'clone') || {}).cooldown || 0);
+    const now = Date.now();
+    const earlySet = window.__qa.qaSetSkillLastUsed('q', now - (cd - 80), { pid: 1 });
+    const early = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    const readySet = window.__qa.qaSetSkillLastUsed('q', now - (cd + 80), { pid: 1 });
+    const ready = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    return { cd, earlySet, early, readySet, ready };
+  });
+
+  expect(pveProbe).toBeTruthy();
+  expect(pveProbe.cd).toBe(2600);
+  expect(pveProbe.earlySet).toBeTruthy();
+  expect(pveProbe.readySet).toBeTruthy();
+  expect(pveProbe.early && pveProbe.early.ok).toBeFalsy();
+  expect(pveProbe.ready && pveProbe.ready.ok).toBeTruthy();
+
+  await startMatchInMode(page, { players: 2, p2Mode: 'pvp', systemId: 'assassin', p2SystemId: 'default' });
+  const pvpProbe = await page.evaluate(() => {
+    if (!window.__qa || typeof window.__qa.qaUseSkill !== 'function') return null;
+    if (typeof window.__qa.qaSetSkillLastUsed !== 'function') return null;
+    if (typeof window.getSystemSkillDef !== 'function') return null;
+
+    const cd = Number((window.getSystemSkillDef('assassin', 'clone') || {}).cooldown || 0);
+    const now = Date.now();
+    const earlySet = window.__qa.qaSetSkillLastUsed('q', now - (cd - 80), { pid: 1 });
+    const early = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    const readySet = window.__qa.qaSetSkillLastUsed('q', now - (cd + 80), { pid: 1 });
+    const ready = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
+    return { cd, earlySet, early, readySet, ready };
+  });
+
+  expect(pvpProbe).toBeTruthy();
+  expect(pvpProbe.cd).toBe(6100);
+  expect(pvpProbe.earlySet).toBeTruthy();
+  expect(pvpProbe.readySet).toBeTruthy();
+  expect(pvpProbe.early && pvpProbe.early.ok).toBeFalsy();
+  expect(pvpProbe.ready && pvpProbe.ready.ok).toBeTruthy();
 });
 
 test('assassin skill cooldown regression stays correct across modes', async ({ page }) => {
