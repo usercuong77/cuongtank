@@ -417,16 +417,28 @@ test('balance regression: cooldown gate thresholds stay stable (PVE speed Q, PvP
   expect(pveProbe.ready && pveProbe.ready.ok).toBeTruthy();
 
   await startMatchInMode(page, { players: 2, p2Mode: 'pvp', systemId: 'assassin', p2SystemId: 'default' });
+  await expect.poll(async () => {
+    return await page.evaluate(() => {
+      if (!window.__qa || typeof window.__qa.getRuntimeState !== 'function') return false;
+      const s = window.__qa.getRuntimeState();
+      if (!s || !s.pvp) return false;
+      return s.pvp.state === 'active' && !s.pvp.freeze;
+    });
+  }).toBeTruthy();
+
   const pvpProbe = await page.evaluate(() => {
     if (!window.__qa || typeof window.__qa.qaUseSkill !== 'function') return null;
     if (typeof window.__qa.qaSetSkillLastUsed !== 'function') return null;
+    if (typeof window.__qa.qaSetPvpSkillLockUntil !== 'function') return null;
     if (typeof window.getSystemSkillDef !== 'function') return null;
 
     const cd = Number((window.getSystemSkillDef('assassin', 'clone') || {}).cooldown || 0);
     const now = Date.now();
     const earlySet = window.__qa.qaSetSkillLastUsed('q', now - (cd - 80), { pid: 1 });
+    window.__qa.qaSetPvpSkillLockUntil(0, { pid: 1 });
     const early = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
     const readySet = window.__qa.qaSetSkillLastUsed('q', now - (cd + 80), { pid: 1 });
+    window.__qa.qaSetPvpSkillLockUntil(0, { pid: 1 });
     const ready = window.__qa.qaUseSkill('q', { pid: 1, noCooldown: false });
     return { cd, earlySet, early, readySet, ready };
   });

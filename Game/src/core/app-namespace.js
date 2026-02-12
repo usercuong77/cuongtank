@@ -101,6 +101,7 @@
     App.boot = App.boot || {};
     App.boot.expectedRuntimeScripts = App.boot.expectedRuntimeScripts || [
         'app-namespace.js',
+        'security-guard.js',
         'i18n.js',
         'bgm.js',
         'welcome.js',

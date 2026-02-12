@@ -34,6 +34,13 @@
                      console.warn("Player integrity lost. Respawning...");
                      Game.player = new Player(Game.selectedSystemId || 'default');
                 }
+                // Security/runtime guard: clamp volatile values to safe ranges.
+                try {
+                    const __sanitize = (window.App && window.App.runtime && typeof window.App.runtime.sanitizeRuntimeState === 'function')
+                        ? window.App.runtime.sanitizeRuntimeState
+                        : null;
+                    if (__sanitize) __sanitize(Game);
+                } catch(e) {}
 
                 __isPvp = (Game.mode === 'PVP_DUEL_AIM');
                 try {

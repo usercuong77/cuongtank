@@ -45,6 +45,7 @@
         const SaveManager = {
             BASE_KEY: "tank_save_v1",
             VERSION: 1,
+            SIG_VERSION: 1,
             _normSlot(slot){
                 slot = (slot == null) ? "" : String(slot);
                 slot = slot.trim().toLowerCase();
@@ -56,23 +57,82 @@
                 slot = this._normSlot(slot);
                 return slot ? (this.BASE_KEY + "::" + slot) : this.BASE_KEY;
             },
+            _stableStringify(v){
+                if (v === null || typeof v !== "object") return JSON.stringify(v);
+                if (Array.isArray(v)) {
+                    const arr = [];
+                    for (let i = 0; i < v.length; i++) arr.push(this._stableStringify(v[i]));
+                    return "[" + arr.join(",") + "]";
+                }
+                const keys = Object.keys(v).sort();
+                const parts = [];
+                for (let i = 0; i < keys.length; i++) {
+                    const k = keys[i];
+                    parts.push(JSON.stringify(k) + ":" + this._stableStringify(v[k]));
+                }
+                return "{" + parts.join(",") + "}";
+            },
+            _fallbackSign(payload, slot){
+                const src = this._stableStringify(payload) + "|" + String(slot || "") + "|tb2d_save_guard_v1";
+                let hash = 0x811c9dc5;
+                for (let i = 0; i < src.length; i++) {
+                    hash ^= src.charCodeAt(i);
+                    hash += (hash << 1) + (hash << 4) + (hash << 7) + (hash << 8) + (hash << 24);
+                }
+                return (hash >>> 0).toString(16).padStart(8, "0");
+            },
+            _signPayload(payload, slot){
+                const __slot = this._normSlot(slot);
+                try {
+                    const sec = (window && window.App && window.App.security) ? window.App.security : null;
+                    if (sec && typeof sec.sign === "function") {
+                        return sec.sign(payload, "save:" + __slot + ":v1");
+                    }
+                } catch(e){}
+                return this._fallbackSign(payload, __slot);
+            },
+            _verifyPayload(payload, signature, slot){
+                const __slot = this._normSlot(slot);
+                const sig = String(signature || "");
+                if (!sig) return false;
+                try {
+                    const sec = (window && window.App && window.App.security) ? window.App.security : null;
+                    if (sec && typeof sec.verify === "function") {
+                        return !!sec.verify(payload, sig, "save:" + __slot + ":v1");
+                    }
+                } catch(e){}
+                return sig === this._fallbackSign(payload, __slot);
+            },
             save(data, slot) {
                 try {
-                    const payload = { version: this.VERSION, ts: Date.now(), data };
-                    localStorage.setItem(this._key(slot), JSON.stringify(payload));
+                    const __slot = this._normSlot(slot);
+                    const core = { version: this.VERSION, ts: Date.now(), data };
+                    const payload = Object.assign({}, core, {
+                        sigV: this.SIG_VERSION,
+                        sig: this._signPayload(core, __slot)
+                    });
+                    localStorage.setItem(this._key(__slot), JSON.stringify(payload));
                     return true;
                 } catch (e) {
                     console.warn("[Save] save failed:", e);
                     return false;
                 }
             },
-            _parse(raw){
+            _parse(raw, slot){
                 if (!raw) return null;
                 const obj = JSON.parse(raw);
                 if (!obj || typeof obj !== "object") return null;
                 if (obj.version !== this.VERSION) {
                     console.warn("[Save] version mismatch:", obj.version, "expected", this.VERSION);
                     return null;
+                }
+                // Backward compatible: old saves without signature still load.
+                if (obj.sig || obj.sigV) {
+                    const core = { version: obj.version, ts: obj.ts, data: obj.data };
+                    if (!this._verifyPayload(core, obj.sig, slot)) {
+                        console.warn("[Save] integrity mismatch -> possible tampering");
+                        return null;
+                    }
                 }
                 return obj;
             },
@@ -86,7 +146,7 @@
                 try{
                     const raw = this._legacyRaw();
                     if (!raw) return null;
-                    const obj = this._parse(raw);
+                    const obj = this._parse(raw, null);
                     if (!obj) return null;
                     // Derive slot from legacy snapshot when available.
                     let snap = null;
@@ -110,8 +170,9 @@
             },
             load(slot) {
                 try {
-                    const raw = localStorage.getItem(this._key(slot));
-                    const obj = this._parse(raw);
+                    const __slot = this._normSlot(slot);
+                    const raw = localStorage.getItem(this._key(__slot));
+                    const obj = this._parse(raw, __slot);
                     if (obj) return obj;
                     // If slot save is missing, attempt legacy migration.
                     if (slot) {
@@ -131,7 +192,7 @@
                     if (slot) {
                         const raw = this._legacyRaw();
                         if (raw) {
-                            const obj = this._parse(raw);
+                            const obj = this._parse(raw, null);
                             if (obj) {
                                 let snap = null;
                                 try{
@@ -153,11 +214,16 @@
             },
             hasSave(slot) {
                 try {
-                    if (localStorage.getItem(this._key(slot))) return true;
+                    const __slot = this._normSlot(slot);
+                    const rawSlot = localStorage.getItem(this._key(__slot));
+                    if (rawSlot) {
+                        const parsed = this._parse(rawSlot, __slot);
+                        if (parsed) return true;
+                    }
                     // Only count legacy save when it belongs to this slot.
                     const raw = this._legacyRaw();
                     if (!raw || !slot) return false;
-                    const obj = this._parse(raw);
+                    const obj = this._parse(raw, null);
                     if (!obj) return false;
                     let snap = null;
                     try{

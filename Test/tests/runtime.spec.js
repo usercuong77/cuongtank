@@ -53,6 +53,50 @@ test('runtime boot-order contract is valid', async ({ page }) => {
   expect(report.loaded[report.loaded.length - 1]).toBe('runtime-order-guard.js');
 });
 
+test('security runtime stays in dev-safe mode on local QA route', async ({ page }) => {
+  await page.goto('/?qa=1');
+  await dismissWelcome(page);
+
+  const info = await page.evaluate(() => {
+    const sec = (window.App && window.App.security) ? window.App.security : null;
+    if (!sec || !sec.flags) return null;
+    const payload = { hp: 123, gold: 456, nested: { wave: 7 } };
+    const sig = (typeof sec.sign === 'function') ? sec.sign(payload, 'runtime-spec') : '';
+    const ok = (typeof sec.verify === 'function') ? sec.verify(payload, sig, 'runtime-spec') : false;
+    return {
+      qa: !!sec.flags.qa,
+      local: !!sec.flags.local,
+      release: !!sec.flags.release,
+      signVerifyOk: !!ok
+    };
+  });
+
+  expect(info).toBeTruthy();
+  expect(info.qa).toBeTruthy();
+  expect(info.local).toBeTruthy();
+  expect(info.release).toBeFalsy();
+  expect(info.signVerifyOk).toBeTruthy();
+});
+
+test('qa hooks are blocked in forced release mode', async ({ page }) => {
+  await page.goto('/?qa=1&release=1');
+  await dismissWelcome(page);
+
+  const state = await page.evaluate(() => {
+    const sec = (window.App && window.App.security) ? window.App.security : null;
+    return {
+      hasQa: !!window.__qa,
+      release: !!(sec && sec.flags && sec.flags.release),
+      qaFlag: !!(sec && sec.flags && sec.flags.qa)
+    };
+  });
+
+  expect(state).toBeTruthy();
+  expect(state.release).toBeTruthy();
+  expect(state.qaFlag).toBeTruthy();
+  expect(state.hasQa).toBeFalsy();
+});
+
 test('legacy runtime snapshots are not loaded by index', async ({ page }) => {
   await page.goto('/');
   await dismissWelcome(page);

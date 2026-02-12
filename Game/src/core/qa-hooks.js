@@ -130,8 +130,20 @@ const __installQaHooks = function() {
                         Game.enemies.push(dummy);
                     } catch(e) {}
                 };
+                const __isReleaseSecurityMode = () => {
+                    try {
+                        const sec = (window && window.App && window.App.security) ? window.App.security : null;
+                        if (!sec) return false;
+                        if (typeof sec.isRelease === 'function') return !!sec.isRelease();
+                        return !!(sec.flags && sec.flags.release);
+                    } catch(e) {
+                        return false;
+                    }
+                };
                 const params = new URLSearchParams((window && window.location && window.location.search) ? window.location.search : '');
                 if (params.get('qa') !== '1') return;
+                // Hard gate: never expose QA hooks in release mode, even if query has ?qa=1.
+                if (__isReleaseSecurityMode()) return;
                 window.__qa = Object.assign({}, window.__qa || {}, {
                     forceGameOver: () => {
                         try { if (Game && typeof Game.gameOver === 'function') Game.gameOver(); } catch(e) {}
@@ -482,6 +494,19 @@ const __installQaHooks = function() {
                             return Number(player._pvpSkillLockUntil || 0);
                         } catch(e) {
                             return 0;
+                        }
+                    },
+                    qaSetPvpSkillLockUntil: (value, opts) => {
+                        const options = (opts && typeof opts === 'object') ? opts : {};
+                        const pid = (typeof options.pid !== 'undefined') ? options.pid : 1;
+                        try {
+                            const player = __resolveQaPlayer(pid);
+                            if (!player) return false;
+                            const v = Number(value || 0);
+                            player._pvpSkillLockUntil = Number.isFinite(v) ? v : 0;
+                            return true;
+                        } catch(e) {
+                            return false;
                         }
                     },
                     qaUseSkill: (skillKey, opts) => {

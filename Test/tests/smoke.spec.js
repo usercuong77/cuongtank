@@ -248,6 +248,35 @@ test('continue loads saved wave and gold', async ({ page }) => {
   }).toBe(321);
 });
 
+test('tampered signed save is ignored on start menu', async ({ page }) => {
+  await page.goto('/');
+  await dismissWelcome(page);
+
+  await page.evaluate(() => {
+    const key = 'tank_save_v1::hard1p';
+    const badPayload = {
+      version: 1,
+      ts: Date.now(),
+      data: {
+        kind: 'S2_MINIMAL',
+        snap: {
+          wave: 99,
+          gold: 999999,
+          mode: { players: 1, difficulty: 'hard' }
+        }
+      },
+      sigV: 1,
+      sig: 'deadbeef'
+    };
+    localStorage.setItem(key, JSON.stringify(badPayload));
+  });
+
+  await page.reload();
+  await dismissWelcome(page);
+
+  await expect(page.locator('#continueBtn')).toBeHidden();
+});
+
 test('shop buy max-hp increases level and max HP', async ({ page }) => {
   await page.goto('/?qa=1');
   await dismissWelcome(page);
